@@ -1,8 +1,14 @@
 package mini_pjt3.com.team1.entity;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
         name = "seller_sales_stats",
         uniqueConstraints = {
@@ -47,10 +53,8 @@ public class SellerSalesStat extends BaseEntity {
     @Column(name = "low_product", length = 255)
     private String lowProduct;
 
-    protected SellerSalesStat() {
-    }
-
-    public static SellerSalesStat create(
+    @Builder
+    public SellerSalesStat(
             Long sellerId,
             String statDate,
             Long dailyAmount,
@@ -58,14 +62,12 @@ public class SellerSalesStat extends BaseEntity {
             String topProduct,
             String lowProduct
     ) {
-        SellerSalesStat stat = new SellerSalesStat();
-        stat.sellerId = sellerId;
-        stat.statDate = statDate;
-        stat.dailyAmount = dailyAmount;
-        stat.dailyCount = dailyCount;
-        stat.topProduct = topProduct;
-        stat.lowProduct = lowProduct;
-        return stat;
+        this.sellerId = sellerId;
+        this.statDate = statDate;
+        this.dailyAmount = dailyAmount;
+        this.dailyCount = dailyCount;
+        this.topProduct = topProduct;
+        this.lowProduct = lowProduct;
     }
 
     public void update(
@@ -78,33 +80,5 @@ public class SellerSalesStat extends BaseEntity {
         this.dailyCount = dailyCount;
         this.topProduct = topProduct;
         this.lowProduct = lowProduct;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Long getSellerId() {
-        return sellerId;
-    }
-
-    public String getStatDate() {
-        return statDate;
-    }
-
-    public Long getDailyAmount() {
-        return dailyAmount;
-    }
-
-    public Integer getDailyCount() {
-        return dailyCount;
-    }
-
-    public String getTopProduct() {
-        return topProduct;
-    }
-
-    public String getLowProduct() {
-        return lowProduct;
     }
 }
