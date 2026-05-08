@@ -98,25 +98,33 @@ public class PaymentServiceImpl implements PaymentService {
                 .member(member)
                 .build();
 
-        // 만약 엔티티 빌더가 totalAmount를 인식 못 한다면 강제로 넣어줍니다.
-        // paymentRepository.save() 하기 전에 강제로 세팅 (Setter가 있다면)
-        // payment.setTotalAmount(amount);
-
         paymentRepository.save(payment);
 
-        // 4. 가상계좌 생성
-        String generatedNumber = "110-" + (int)(Math.random() * 900000 + 100000) + "-12345";
+        // 4. 가상계좌 생성 (무작위 은행 선정 + 무작위 번호 조합)
+        // 4-1. Enum에 정의된 전체 은행 목록을 가져옵니다.
+        BankCode[] allBanks = BankCode.values();
+        // 4-2. 그중에서 하나를 무작위로 선택합니다.
+        BankCode randomBank = allBanks[(int)(Math.random() * allBanks.length)];
+
+        // 4-3. 선택된 은행의 코드(3자리) + 무작위 9자리 숫자 생성
+        String prefix = randomBank.getCode();
+        long randomNum = (long) (Math.random() * 900_000_000L) + 100_000_000L;
+        String generatedNumber = prefix + "-" + randomNum;
+
         VirtualAccount vAccount = VirtualAccount.builder()
                 .accountNumber(generatedNumber)
-                .bankName("신한은행")
-                .bankCode(BankCode.SHINHAN)
+                .bankName(randomBank.getName()) // 랜덤으로 선택된 은행명 세팅
+                .bankCode(randomBank)               // 랜덤으로 선택된 은행코드 세팅
                 .payment(payment)
                 .build();
         virtualAccountRepository.save(vAccount);
 
+        // 5. 응답 리턴
         return PaymentResponse.builder()
                 .payUuid(payment.getPayUuid())
+                .productName(payment.getProductName())
                 .status(payment.getStatus())
+                .bankName(randomBank.getName())
                 .depositedAmount(payment.getTotalAmount())
                 .maskedAccount(vAccount.getAccountNumber())
                 .message("가상계좌가 발급되었습니다.")
