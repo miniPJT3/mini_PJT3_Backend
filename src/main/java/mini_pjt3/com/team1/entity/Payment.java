@@ -15,7 +15,11 @@ public class Payment extends BaseEntity {
     @Column(unique = true)
     private String payUuid; // 외부 노출용 고유값
 
+    @Column(nullable = false)
     private Long totalAmount;
+
+    @Column(nullable = false)
+    private String productName;
 
     @Enumerated(EnumType.STRING)
     private TransactionStatus status;

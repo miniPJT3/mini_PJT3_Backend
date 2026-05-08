@@ -17,11 +17,13 @@ public class VirtualAccount extends BaseEntity {
     @Column(unique = true)
     private String accountNumber;
 
-    // 1. 마스킹된 계좌번호 저장할 필드 추가! (설계서에 있었음)
     private String maskedAccountNumber;
 
     @Enumerated(EnumType.STRING)
     private BankCode bankCode;
+
+    @Column(nullable = false)
+    private String bankName;
 
     @Enumerated(EnumType.STRING)
     private AccountStatus status;
