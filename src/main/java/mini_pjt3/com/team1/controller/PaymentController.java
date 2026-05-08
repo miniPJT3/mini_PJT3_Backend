@@ -9,6 +9,7 @@ import mini_pjt3.com.team1.service.PaymentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/payments")
@@ -48,6 +49,17 @@ public class PaymentController {
 
         return ResponseEntity.ok(
                 ApiResponse.success("결제 상태 조회 성공", response)
+        );
+    }
+
+    @GetMapping("/me")
+        public ResponseEntity<ApiResponse<List<PaymentResponse>>> getMyPayments(
+                Authentication authentication
+        ) {
+        List<PaymentResponse> response = paymentService.getMyPayments(authentication);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("내 결제 목록 조회 성공", response)
         );
     }
 }

@@ -101,6 +101,20 @@ public class PaymentService {
         historyRepository.save(history);
     }
 
+    public List<PaymentResponse> getMyPayments(Authentication authentication) {
+
+        Long memberId = Long.parseLong(authentication.getName());
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원 없음"));
+
+        List<Payment> payments = paymentRepository.findAllByMember(member);
+
+        return payments.stream()
+                .map(PaymentResponse::from)
+                .toList();
+        }
+
     @Transactional(readOnly = true)
     public List<PaymentResponse> getPaymentHistories() {
         return paymentRepository.findAll().stream()
