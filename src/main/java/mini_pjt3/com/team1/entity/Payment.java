@@ -31,4 +31,12 @@ public class Payment extends BaseEntity {
         this.member = member;
         this.status = TransactionStatus.PENDING;
     }
+
+    public void confirm() {
+        this.status = TransactionStatus.SUCCESS;
+    }
+
+    public void cancel() {
+        this.status = TransactionStatus.CANCELED;
+    }
 }

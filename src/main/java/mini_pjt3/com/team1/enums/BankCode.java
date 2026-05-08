@@ -26,4 +26,14 @@ public enum BankCode {
     private final String code;     // 은행 코드 (088 등)
     private final String name;     // 은행 명칭
     private final String category; // 비고 (지방, 인터넷 등)
+
+    public static BankCode fromCode(String code) {
+        for (BankCode bankCode : values()) {
+            if (bankCode.code.equals(code)) {
+                return bankCode;
+            }
+        }
+
+        throw new IllegalArgumentException("지원하지 않는 은행 코드입니다.");
+    }
 }

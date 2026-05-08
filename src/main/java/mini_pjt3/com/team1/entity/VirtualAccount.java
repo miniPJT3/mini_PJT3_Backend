@@ -29,12 +29,22 @@ public class VirtualAccount extends BaseEntity {
     @JoinColumn(name = "payment_id")
     private Payment payment;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id")
+    private Member member;
+
     @Builder
-    public VirtualAccount(String accountNumber, BankCode bankCode, Payment payment) {
+    public VirtualAccount(String accountNumber, BankCode bankCode, Payment payment, Member member) {
         this.accountNumber = accountNumber;
         this.bankCode = bankCode;
         this.payment = payment;
+        this.member = member;
         this.status = AccountStatus.ACTIVE;
         this.expiredAt = LocalDateTime.now().plusHours(3);
+    }
+
+    public void expire() {
+        this.status = AccountStatus.EXPIRED;
+        this.isDeleted = true;
     }
 }

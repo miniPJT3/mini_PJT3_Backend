@@ -53,9 +53,9 @@ spring:
 
 # 5. JWT 커스텀 설정
 jwt:
-  secret: ${JWT_SECRET_KEY:your_default_secret_key_at_least_32_characters_long}
-  access-token-expiration: 3600000 # 1시간 (ms)
-  refresh-token-expiration: 604800000 # 7일 (ms)
+  secret: ${JWT_SECRET_KEY:mySuperLongJwtSecretKeyForHS512AlgorithmSecurityProject2026VeryStrongKey123456789}
+  access-token-validity-in-seconds: 3600 # 1시간 (3600000 ms / 1000)
+  refresh-token-validity-in-seconds: 604800 # 7일 (604800000 ms / 1000)
 
 # 로그 레벨 설정
 logging:
