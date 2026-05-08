@@ -3,6 +3,8 @@ package mini_pjt3.com.team1.service;
 import mini_pjt3.com.team1.dto.request.PaymentRequest;
 import mini_pjt3.com.team1.dto.response.PaymentResponse;
 
+import java.util.List;
+
 public interface PaymentService {
 
     /**
@@ -14,4 +16,6 @@ public interface PaymentService {
 
     // 가상계좌 발급 메서드 선언
     PaymentResponse issueVirtualAccount(Long memberId, PaymentRequest dto);
+
+    List<PaymentResponse> getMyHistory(Long memberId);
 }

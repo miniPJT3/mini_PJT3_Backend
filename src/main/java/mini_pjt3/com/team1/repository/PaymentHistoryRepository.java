@@ -2,8 +2,11 @@ package mini_pjt3.com.team1.repository;
 
 import mini_pjt3.com.team1.entity.PaymentHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -19,4 +22,8 @@ public interface PaymentHistoryRepository extends JpaRepository<PaymentHistory, 
      * 특정 결제 요청(Payment)에 대한 입금 이력을 조회합니다.
      */
     Optional<PaymentHistory> findByPaymentId(Long paymentId);
+
+    // PaymentHistoryRepository.java
+    @Query("SELECT ph FROM PaymentHistory ph JOIN ph.payment p WHERE p.member.id = :memberId ORDER BY ph.paidAt DESC")
+    List<PaymentHistory> findAllByMemberId(@Param("memberId") Long memberId);
 }

@@ -8,6 +8,8 @@ import mini_pjt3.com.team1.service.PaymentService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
@@ -41,5 +43,23 @@ public class PaymentController {
 
         // 성공 응답 반환
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 내 결제 내역 조회 API
+     */
+    @GetMapping("/history")
+    public ResponseEntity<List<PaymentResponse>> getMyPaymentHistory() {
+        // 1. 실제 운영 환경에서는 아래처럼 시큐리티 컨텍스트에서 유저 정보를 가져와야 합니다.
+        // Long currentMemberId = SecurityUtil.getCurrentMemberId();
+
+        // 2. 지금은 테스트 단계이므로 데이터가 들어간 1번 멤버의 내역을 가져오도록 고정합니다.
+        Long testMemberId = 1L;
+
+        List<PaymentResponse> history = paymentService.getMyHistory(testMemberId);
+
+        // 만약 내역이 비어있으면 204 No Content를 줄 수도 있지만,
+        // 빈 리스트([])를 주는 것이 프론트에서 처리하기 더 편합니다.
+        return ResponseEntity.ok(history);
     }
 }

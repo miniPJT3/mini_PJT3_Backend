@@ -14,8 +14,8 @@ public class Payment extends BaseEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true)
-    private String payUuid; // 외부 노출용 고유값
+    @Column(unique = true, nullable = false)
+    private String payUuid;
 
     @Column(nullable = false)
     private Long totalAmount;
@@ -44,5 +44,12 @@ public class Payment extends BaseEntity {
      */
     public void updateStatus(TransactionStatus status) {
         this.status = status;
+    }
+
+    // 데이터가 저장되기 직전에 실행되는 메서드
+    @PrePersist
+    public void createUuid() {
+        // 서버에서 직접 고유 식별자(UUID)를 생성합니다.
+        this.payUuid = UUID.randomUUID().toString();
     }
 }

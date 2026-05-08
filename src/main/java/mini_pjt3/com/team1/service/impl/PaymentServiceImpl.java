@@ -3,6 +3,7 @@ package mini_pjt3.com.team1.service.impl;
 import lombok.RequiredArgsConstructor;
 import mini_pjt3.com.team1.dto.request.PaymentRequest;
 import mini_pjt3.com.team1.dto.response.PaymentResponse;
+import mini_pjt3.com.team1.entity.Member;
 import mini_pjt3.com.team1.entity.Payment;
 import mini_pjt3.com.team1.entity.PaymentHistory;
 import mini_pjt3.com.team1.entity.VirtualAccount;
@@ -17,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -77,15 +80,31 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Transactional
     public PaymentResponse issueVirtualAccount(Long memberId, PaymentRequest dto) {
-        // 1. 결제 정보 생성 (dto의 depositedAmount를 목표 금액으로 사용)
+        // 1. 데이터 유입 확인 (로그 확인용)
+        System.out.println("DTO 상품명: " + dto.getProductName());
+        System.out.println("DTO 입금액: " + dto.getDepositedAmount());
+
+        // 2. 멤버 조회
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
+        // 3. 결제 정보 생성
+        Long amount = dto.getDepositedAmount();
+        String pName = dto.getProductName();
+
         Payment payment = Payment.builder()
-                .productName("모니터 암")
-                .totalAmount(dto.getDepositedAmount())
-                .member(memberRepository.findById(memberId).orElseThrow())
+                .productName(pName)
+                .totalAmount(amount)
+                .member(member)
                 .build();
+
+        // 만약 엔티티 빌더가 totalAmount를 인식 못 한다면 강제로 넣어줍니다.
+        // paymentRepository.save() 하기 전에 강제로 세팅 (Setter가 있다면)
+        // payment.setTotalAmount(amount);
+
         paymentRepository.save(payment);
 
-        // 2. 가상계좌 생성
+        // 4. 가상계좌 생성
         String generatedNumber = "110-" + (int)(Math.random() * 900000 + 100000) + "-12345";
         VirtualAccount vAccount = VirtualAccount.builder()
                 .accountNumber(generatedNumber)
@@ -95,13 +114,37 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
         virtualAccountRepository.save(vAccount);
 
-        // 3. 응답 (PaymentResponse 활용)
         return PaymentResponse.builder()
                 .payUuid(payment.getPayUuid())
-                .status(payment.getStatus()) // PENDING
+                .status(payment.getStatus())
                 .depositedAmount(payment.getTotalAmount())
-                .maskedAccount(vAccount.getAccountNumber()) // 발급 시엔 실제 번호 전달
-                .message("가상계좌가 발급되었습니다. 3시간 이내에 입금해주세요.")
+                .maskedAccount(vAccount.getAccountNumber())
+                .message("가상계좌가 발급되었습니다.")
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PaymentResponse> getMyHistory(Long memberId) {
+        List<Payment> payments = paymentRepository.findAllByMemberId(memberId);
+
+        return payments.stream()
+                .map(p -> {
+                    // 1. 해당 결제(p)에 연결된 가상계좌를 찾습니다.
+                    String accountNum = virtualAccountRepository.findByPaymentId(p.getId())
+                            .map(VirtualAccount::getAccountNumber) // 마스킹된 번호 가져오기
+                            .orElse("계좌 정보 없음");
+                    System.out.println("결제ID: " + p.getId() + " / 찾은계좌: " + accountNum);
+
+                    return PaymentResponse.builder()
+                            .payUuid(p.getPayUuid())
+                            .productName(p.getProductName())
+                            .depositedAmount(p.getTotalAmount())
+                            .status(p.getStatus())
+                            .maskedAccount(accountNum)
+                            .message(p.getCreatedAt().toString())
+                            .build();
+                })
+                .toList();
     }
 }
