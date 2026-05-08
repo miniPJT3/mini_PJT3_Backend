@@ -11,4 +11,7 @@ public interface PaymentService {
      * @return 결제 완료 정보 및 마스킹된 계좌 정보
      */
     PaymentResponse processDeposit(PaymentRequest request);
+
+    // 가상계좌 발급 메서드 선언
+    PaymentResponse issueVirtualAccount(Long memberId, PaymentRequest dto);
 }

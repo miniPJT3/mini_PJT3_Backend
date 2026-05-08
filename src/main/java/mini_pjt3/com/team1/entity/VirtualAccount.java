@@ -36,8 +36,9 @@ public class VirtualAccount extends BaseEntity {
     private Payment payment;
 
     @Builder
-    public VirtualAccount(String accountNumber, BankCode bankCode, Payment payment) {
+    public VirtualAccount(String accountNumber, String bankName, BankCode bankCode, Payment payment) {
         this.accountNumber = accountNumber;
+        this.bankName = bankName;
         this.bankCode = bankCode;
         this.payment = payment;
         this.status = AccountStatus.ACTIVE;

@@ -3,6 +3,8 @@ package mini_pjt3.com.team1.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import mini_pjt3.com.team1.enums.TransactionStatus;
+
+import java.util.SimpleTimeZone;
 import java.util.UUID;
 
 @Entity
@@ -29,8 +31,9 @@ public class Payment extends BaseEntity {
     private Member member;
 
     @Builder
-    public Payment(Long totalAmount, Member member) {
+    public Payment(Long totalAmount, String productName, Member member) {
         this.payUuid = UUID.randomUUID().toString();
+        this.productName = productName;
         this.totalAmount = totalAmount;
         this.member = member;
         this.status = TransactionStatus.PENDING;

@@ -6,7 +6,9 @@ import mini_pjt3.com.team1.dto.response.PaymentResponse;
 import mini_pjt3.com.team1.entity.Payment;
 import mini_pjt3.com.team1.entity.PaymentHistory;
 import mini_pjt3.com.team1.entity.VirtualAccount;
+import mini_pjt3.com.team1.enums.BankCode;
 import mini_pjt3.com.team1.enums.TransactionStatus;
+import mini_pjt3.com.team1.repository.MemberRepository;
 import mini_pjt3.com.team1.repository.PaymentHistoryRepository;
 import mini_pjt3.com.team1.repository.PaymentRepository;
 import mini_pjt3.com.team1.repository.VirtualAccountRepository;
@@ -24,6 +26,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentHistoryRepository paymentHistoryRepository;
     private final VirtualAccountRepository virtualAccountRepository;
+    private final MemberRepository memberRepository;
 
     @Override
     public PaymentResponse processDeposit(PaymentRequest request) {
@@ -70,5 +73,35 @@ public class PaymentServiceImpl implements PaymentService {
                 history.getDepositedAmount(),
                 va.getMaskedAccountNumber()
         );
+    }
+
+    @Transactional
+    public PaymentResponse issueVirtualAccount(Long memberId, PaymentRequest dto) {
+        // 1. 결제 정보 생성 (dto의 depositedAmount를 목표 금액으로 사용)
+        Payment payment = Payment.builder()
+                .productName("모니터 암")
+                .totalAmount(dto.getDepositedAmount())
+                .member(memberRepository.findById(memberId).orElseThrow())
+                .build();
+        paymentRepository.save(payment);
+
+        // 2. 가상계좌 생성
+        String generatedNumber = "110-" + (int)(Math.random() * 900000 + 100000) + "-12345";
+        VirtualAccount vAccount = VirtualAccount.builder()
+                .accountNumber(generatedNumber)
+                .bankName("신한은행")
+                .bankCode(BankCode.SHINHAN)
+                .payment(payment)
+                .build();
+        virtualAccountRepository.save(vAccount);
+
+        // 3. 응답 (PaymentResponse 활용)
+        return PaymentResponse.builder()
+                .payUuid(payment.getPayUuid())
+                .status(payment.getStatus()) // PENDING
+                .depositedAmount(payment.getTotalAmount())
+                .maskedAccount(vAccount.getAccountNumber()) // 발급 시엔 실제 번호 전달
+                .message("가상계좌가 발급되었습니다. 3시간 이내에 입금해주세요.")
+                .build();
     }
 }

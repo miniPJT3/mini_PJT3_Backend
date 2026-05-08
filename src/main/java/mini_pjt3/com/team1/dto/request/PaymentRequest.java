@@ -18,6 +18,9 @@ public class PaymentRequest {
     @NotBlank(message = "은행 거래 ID는 필수입니다.")
     private String transactionId;
 
+    @NotBlank(message = "상품명은 필수입니다.")
+    private String productName; 
+
     @NotNull(message = "입금액은 필수입니다.")
     @Min(value = 100, message = "최소 결제 금액은 100원 이상입니다.")
     private Long depositedAmount;

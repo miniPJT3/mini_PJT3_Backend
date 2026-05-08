@@ -24,7 +24,7 @@ public class SecurityConfig {
                 // 3. 경로별 권한 설정
                 .authorizeHttpRequests(auth -> auth
                         // 입금 승인 API는 로그인 없이도 접근 가능하게 허용!
-                        .requestMatchers("/api/v1/payments/deposit").permitAll()
+                        .requestMatchers("/api/**").permitAll()
                         // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 );

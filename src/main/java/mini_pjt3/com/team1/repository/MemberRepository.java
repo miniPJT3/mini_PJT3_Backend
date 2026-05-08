@@ -1,4 +1,8 @@
 package mini_pjt3.com.team1.repository;
 
-public interface MemberRepository {
+import mini_pjt3.com.team1.entity.Member;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface MemberRepository extends JpaRepository<Member, Long> {
+
 }
