@@ -41,10 +41,12 @@ public class PaymentService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("회원 없음"));
 
-        // 1. 가상계좌 생성
+        // 은행 코드 검증
+        BankCode bankCode = BankCode.fromCode(request.getBankCode());
+        // 가상계좌 생성
         VirtualAccount virtualAccount = VirtualAccount.builder()
-                .accountNumber(generateAccountNumber())
-                .bankCode(BankCode.fromCode(request.getBankCode()))
+                .accountNumber(generateAccountNumber(bankCode))
+                .bankCode(bankCode)
                 .member(member)
                 .build();
 
@@ -58,10 +60,12 @@ public class PaymentService {
 
         paymentRepository.save(payment);
 
+        virtualAccount.setPayment(payment);
+
         return PaymentResponse.from(payment);
     }
 
-    private String generateAccountNumber() {
+    private String generateAccountNumber(BankCode bankCode) {
         return "VA" + System.currentTimeMillis();
     }
 

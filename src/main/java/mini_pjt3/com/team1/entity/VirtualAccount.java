@@ -47,4 +47,8 @@ public class VirtualAccount extends BaseEntity {
         this.status = AccountStatus.EXPIRED;
         this.isDeleted = true;
     }
+
+    public void setPayment(Payment payment) {
+        this.payment = payment;
+    }
 }
