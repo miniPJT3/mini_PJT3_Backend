@@ -138,18 +138,23 @@ public class PaymentServiceImpl implements PaymentService {
 
         return payments.stream()
                 .map(p -> {
-                    // 1. 해당 결제(p)에 연결된 가상계좌를 찾습니다.
-                    String accountNum = virtualAccountRepository.findByPaymentId(p.getId())
-                            .map(VirtualAccount::getAccountNumber) // 마스킹된 번호 가져오기
-                            .orElse("계좌 정보 없음");
-                    System.out.println("결제ID: " + p.getId() + " / 찾은계좌: " + accountNum);
+                    // 1. 해당 결제(p)에 연결된 가상계좌 엔티티를 통째로 찾습니다
+                    Optional<VirtualAccount> vaOptional = virtualAccountRepository.findByPaymentId(p.getId());
 
+                    // 2. 계좌번호와 은행명을 안전하게 추출
+                    String accountNum = vaOptional.map(VirtualAccount::getAccountNumber).orElse("계좌 정보 없음");
+                    String bankName = vaOptional.map(VirtualAccount::getBankName).orElse("은행 정보 없음"); // ⬅️ 추가됨!
+
+                    System.out.println("결제ID: " + p.getId() + " / 은행: " + bankName + " / 계좌: " + accountNum);
+
+                    // 3. 응답 DTO 빌더에 bankName 추가
                     return PaymentResponse.builder()
                             .payUuid(p.getPayUuid())
                             .productName(p.getProductName())
                             .depositedAmount(p.getTotalAmount())
                             .status(p.getStatus())
                             .maskedAccount(accountNum)
+                            .bankName(bankName) //
                             .message(p.getCreatedAt().toString())
                             .build();
                 })

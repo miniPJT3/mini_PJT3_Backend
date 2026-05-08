@@ -9,6 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment extends BaseEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
