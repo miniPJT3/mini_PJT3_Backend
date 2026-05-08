@@ -8,20 +8,28 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PaymentHistory extends BaseEntity {
+
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payment_id")
-    private Payment payment;
+    @JoinColumn(name = "payment_id", unique = true)
+    private Payment payment; // Payment와 1:1
 
-    private Long finalAmount;
-    private LocalDateTime depositedAt;
+    @Column(unique = true, nullable = false)
+    private String transactionId; // 은행 측 고유 거래 ID (중복 결제 방지용)
+
+    @Column(nullable = false)
+    private Long depositedAmount; // 실제 입금 금액
+
+    @Column(nullable = false)
+    private LocalDateTime paidAt; // 입금 확정 시각
 
     @Builder
-    public PaymentHistory(Payment payment, Long finalAmount) {
+    public PaymentHistory(Payment payment, String transactionId, Long depositedAmount, LocalDateTime paidAt) {
         this.payment = payment;
-        this.finalAmount = finalAmount;
-        this.depositedAt = LocalDateTime.now();
+        this.transactionId = transactionId;
+        this.depositedAmount = depositedAmount;
+        this.paidAt = paidAt;
     }
 }
