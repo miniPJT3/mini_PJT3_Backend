@@ -1,0 +1,34 @@
+package mini_pjt3.com.team1.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import mini_pjt3.com.team1.enums.TransactionStatus;
+import java.util.UUID;
+
+@Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Payment extends BaseEntity {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true)
+    private String payUuid; // 외부 노출용 고유값
+
+    private Long amount;
+
+    @Enumerated(EnumType.STRING)
+    private TransactionStatus status;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id")
+    private Member member;
+
+    @Builder
+    public Payment(Long amount, Member member) {
+        this.payUuid = UUID.randomUUID().toString();
+        this.amount = amount;
+        this.member = member;
+        this.status = TransactionStatus.PENDING;
+    }
+}

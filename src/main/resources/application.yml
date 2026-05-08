@@ -1,0 +1,74 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+
+spring:
+  application:
+    name: SafePay-Vault
+
+  # 1. Database 설정 (H2 인메모리 사용 - 로컬 개발용)
+  datasource:
+    # JDBC URL: 인메모리 모드로 설정
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+
+  # 2. H2 콘솔 설정 (브라우저에서 DB 확인 가능)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # 3. JPA 및 Hibernate 설정
+  jpa:
+    # H2 전용 Dialect 설정
+    database-platform: org.hibernate.dialect.H2Dialect
+    # [해결책] 테이블 생성 순서 꼬임을 방지하기 위해 초기 실행 시 create 사용 추천
+    hibernate:
+      ddl-auto: create 
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    # [해결책] 스키마 생성 후 데이터 초기화를 진행하도록 설정 (중요)
+    defer-datasource-initialization: true
+    open-in-view: false
+
+  # [추가] SQL 초기화 설정 (data.sql 사용 시)
+  sql:
+    init:
+      mode: always
+
+  # 4. Redis 설정 (토큰 및 계좌 TTL 관리용)
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # 5. OAuth2 설정 (구글 로그인)
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - email
+              - profile
+
+# 6. JWT 커스텀 설정
+jwt:
+  secret: ${JWT_SECRET_KEY:your_default_secret_key_at_least_32_characters_long}
+  access-token-expiration: 3600000 # 1시간 (ms)
+  refresh-token-expiration: 604800000 # 7일 (ms)
+
+# 로그 레벨 설정
+logging:
+  level:
+    org.springframework.security: DEBUG
+    mini_pjt3.com.team1: DEBUG
