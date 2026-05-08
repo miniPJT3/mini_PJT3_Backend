@@ -15,7 +15,11 @@ public class Payment extends BaseEntity {
     @Column(unique = true)
     private String payUuid; // 외부 노출용 고유값
 
-    private Long amount;
+    @Column(nullable = false)
+    private Long totalamount;
+
+    @Column(nullable = false)
+    private String productName;
 
     @Enumerated(EnumType.STRING)
     private TransactionStatus status;
@@ -25,9 +29,9 @@ public class Payment extends BaseEntity {
     private Member member;
 
     @Builder
-    public Payment(Long amount, Member member) {
+    public Payment(Long totalamount, Member member) {
         this.payUuid = UUID.randomUUID().toString();
-        this.amount = amount;
+        this.totalamount = totalamount;
         this.member = member;
         this.status = TransactionStatus.PENDING;
     }
