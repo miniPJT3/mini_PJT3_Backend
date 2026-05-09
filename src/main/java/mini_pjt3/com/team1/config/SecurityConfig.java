@@ -18,12 +18,20 @@ public class SecurityConfig { // 클래스 시작
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // 🥊 1. H2 콘솔이 사용하는 Frame 구조 허용 (이미 잘 하셨지만 순서를 위로!)
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
+
+                // 🥊 2. CSRF 비활성화 (API와 H2 콘솔 모두를 위해 필수)
                 .csrf(csrf -> csrf.disable())
+
+                // 🥊 3. CORS 설정 적용
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
                 .authorizeHttpRequests(auth -> auth
+                        // 🥊 4. H2 콘솔 관련 정적 리소스까지 모두 허용
                         .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/api/payments/**").permitAll()
+                        .requestMatchers("/api/**").permitAll()
+                        .requestMatchers("/favicon.ico").permitAll() // ⬅️ 아까 로그에 찍힌 에러 방지
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 );

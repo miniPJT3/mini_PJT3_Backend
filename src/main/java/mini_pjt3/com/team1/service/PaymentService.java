@@ -7,12 +7,14 @@ import java.util.List;
 
 public interface PaymentService {
 
-    /**
-     * [Service B] 입금 승인 및 검증 처리
-     * @param request 입금 시뮬레이터에서 넘어온 데이터 (UUID, 거래ID, 입금액 등)
-     * @return 결제 완료 정보 및 마스킹된 계좌 정보
-     */
-    PaymentResponse processDeposit(PaymentRequest request);
+    // 판매자 ID별 승인 대기(DEPOSITED) 목록 조회
+    List<PaymentResponse> getPendingPaymentsBySeller(Long sellerId);
+
+    // 판매자의 입금 확인 승인 처리 (상태 변경: DEPOSITED -> COMPLETED)
+    void approvePayment(String payUuid, Long sellerId);
+
+    // 3. 구매자 입금 보고 로직
+    PaymentResponse reportDeposit(String payUuid);
 
     // 가상계좌 발급 메서드 선언
     PaymentResponse issueVirtualAccount(Long memberId, PaymentRequest dto);

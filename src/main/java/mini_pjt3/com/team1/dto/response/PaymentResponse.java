@@ -16,7 +16,10 @@ public class PaymentResponse {
     private Long depositedAmount;    // 실제 입금된 금액
     private String maskedAccount;    // 보안을 위해 마스킹 처리된 계좌번호
     private LocalDateTime paidAt;    // 최종 결제 완료 시간
+    private Long totalAmount;
     private String productName;
+    private String memberName;
+    private java.time.LocalDateTime createdAt;
     private String bankName;
     private String message;          // 응답 메시지 (예: "결제가 성공적으로 완료되었습니다.")
 

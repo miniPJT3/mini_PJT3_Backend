@@ -18,6 +18,10 @@ public class Payment extends BaseEntity {
     @Column(unique = true, nullable = false)
     private String payUuid;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id")
+    private Product product;
+
     @Column(nullable = false)
     private Long totalAmount;
 

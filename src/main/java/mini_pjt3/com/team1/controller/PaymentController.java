@@ -34,18 +34,6 @@ public class PaymentController {
     }
 
     /**
-     * [Service B] 가상 계좌 입금 승인 Webhook
-     * 입금 시뮬레이터(FE)에서 이 API를 호출하면 결제가 완료됨.
-     */
-    @PostMapping("/deposit")
-    public ResponseEntity<PaymentResponse> approveDeposit(@RequestBody @Valid PaymentRequest request) {
-        PaymentResponse response = paymentService.processDeposit(request);
-
-        // 성공 응답 반환
-        return ResponseEntity.ok(response);
-    }
-
-    /**
      * 내 결제 내역 조회 API
      */
     @GetMapping("/history")
@@ -61,5 +49,28 @@ public class PaymentController {
         // 만약 내역이 비어있으면 204 No Content를 줄 수도 있지만,
         // 빈 리스트([])를 주는 것이 프론트에서 처리하기 더 편합니다.
         return ResponseEntity.ok(history);
+    }
+
+    // 🥊 판매자 대시보드용 목록 조회 (sellerId는 현재 1로 고정해서 테스트)
+    @GetMapping("/seller/{sellerId}/pending")
+    public ResponseEntity<List<PaymentResponse>> getPendingPayments(@PathVariable Long sellerId) {
+        System.out.println("조회 요청된 판매자 ID: " + sellerId);
+        List<PaymentResponse> responses = paymentService.getPendingPaymentsBySeller(sellerId);
+        return ResponseEntity.ok(responses);
+    }
+
+    // 🥊 판매자의 최종 입금 확인 승인 버튼 클릭 시 호출
+    @PostMapping("/approve/{payUuid}")
+    public ResponseEntity<Void> approvePayment(@PathVariable String payUuid) {
+        // 🥊 현재는 테스트를 위해 판매자 ID를 1로 고정하여 전달
+        paymentService.approvePayment(payUuid, 1L);
+        return ResponseEntity.ok().build();
+    }
+
+    // 1. [구매자] "입금 완료" 버튼 클릭 시 호출
+    @PostMapping("/report-deposit/{payUuid}")
+    public ResponseEntity<PaymentResponse> reportDeposit(@PathVariable String payUuid) {
+        // 구매자가 가상계좌로 입금 후 보고하는 단계 (상태: PENDING -> DEPOSITED)
+        return ResponseEntity.ok(paymentService.reportDeposit(payUuid));
     }
 }

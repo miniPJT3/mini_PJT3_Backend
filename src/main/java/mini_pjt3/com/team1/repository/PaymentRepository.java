@@ -1,6 +1,7 @@
 package mini_pjt3.com.team1.repository;
 
 import mini_pjt3.com.team1.entity.Payment;
+import mini_pjt3.com.team1.enums.TransactionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,4 +20,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     // 상태가 PENDING이고, 특정 시간(3시간 전) 이전에 생성된 데이터 찾기
     List<Payment> findAllByStatusAndCreatedAtBefore(String status, LocalDateTime dateTime);
+
+    List<Payment> findAllByProduct_SellerIdAndStatus(Long sellerId, TransactionStatus status);
 }
