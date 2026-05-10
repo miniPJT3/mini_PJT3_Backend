@@ -52,10 +52,10 @@ public class PaymentController {
     }
 
     // 🥊 판매자 대시보드용 목록 조회 (sellerId는 현재 1로 고정해서 테스트)
-    @GetMapping("/seller/{sellerId}/pending")
+    @GetMapping("/seller/{sellerId}/history")
     public ResponseEntity<List<PaymentResponse>> getPendingPayments(@PathVariable Long sellerId) {
         System.out.println("조회 요청된 판매자 ID: " + sellerId);
-        List<PaymentResponse> responses = paymentService.getPendingPaymentsBySeller(sellerId);
+        List<PaymentResponse> responses = paymentService.getPaymentsBySeller(sellerId);
         return ResponseEntity.ok(responses);
     }
 

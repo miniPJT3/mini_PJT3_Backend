@@ -17,7 +17,9 @@ public class PaymentRequest {
     private String transactionId;
 
     @NotBlank(message = "상품명은 필수입니다.")
-    private String productName; 
+    private String productName;
+
+    private Long productId;
 
     @NotNull(message = "입금액은 필수입니다.")
     @Min(value = 100, message = "최소 결제 금액은 100원 이상입니다.")

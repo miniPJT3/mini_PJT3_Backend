@@ -7,8 +7,8 @@ import java.util.List;
 
 public interface PaymentService {
 
-    // 판매자 ID별 승인 대기(DEPOSITED) 목록 조회
-    List<PaymentResponse> getPendingPaymentsBySeller(Long sellerId);
+    // 판매자 ID별 판매 목록 조회
+    List<PaymentResponse> getPaymentsBySeller(Long sellerId);
 
     // 판매자의 입금 확인 승인 처리 (상태 변경: DEPOSITED -> COMPLETED)
     void approvePayment(String payUuid, Long sellerId);

@@ -11,6 +11,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class Payment extends BaseEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -36,11 +37,12 @@ public class Payment extends BaseEntity {
     private Member member;
 
     @Builder
-    public Payment(Long totalAmount, String productName, Member member) {
+    public Payment(Long totalAmount, String productName, Member member, Product product) {
         this.payUuid = UUID.randomUUID().toString();
         this.productName = productName;
         this.totalAmount = totalAmount;
         this.member = member;
+        this.product = product;
         this.status = TransactionStatus.PENDING;
     }
 
@@ -51,10 +53,10 @@ public class Payment extends BaseEntity {
         this.status = status;
     }
 
-    // 데이터가 저장되기 직전에 실행되는 메서드
     @PrePersist
     public void createUuid() {
-        // 서버에서 직접 고유 식별자(UUID)를 생성합니다.
-        this.payUuid = UUID.randomUUID().toString();
+        if (this.payUuid == null) { // 이미 생성되어 있지 않을 때만 생성
+            this.payUuid = UUID.randomUUID().toString();
+        }
     }
 }

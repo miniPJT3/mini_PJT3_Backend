@@ -21,5 +21,5 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     // 상태가 PENDING이고, 특정 시간(3시간 전) 이전에 생성된 데이터 찾기
     List<Payment> findAllByStatusAndCreatedAtBefore(String status, LocalDateTime dateTime);
 
-    List<Payment> findAllByProduct_SellerIdAndStatus(Long sellerId, TransactionStatus status);
+    List<Payment> findAllByProduct_SellerId(Long sellerId);
 }
