@@ -2,8 +2,11 @@ package mini_pjt3.com.team1.repository;
 
 import mini_pjt3.com.team1.entity.VirtualAccount;
 import org.springframework.data.jpa.repository.JpaRepository;
-
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.util.Optional;
+import java.util.List;
+import mini_pjt3.com.team1.enums.TransactionStatus;
 
 public interface VirtualAccountRepository extends JpaRepository<VirtualAccount, Long> {
 
@@ -13,4 +16,12 @@ public interface VirtualAccountRepository extends JpaRepository<VirtualAccount, 
      * JPA가 findByPaymentId(Long paymentId)를 해석해서 쿼리를 날려줍니다.
      */
     Optional<VirtualAccount> findByPaymentId(Long paymentId);
+
+    @Query("""
+            SELECT va
+            FROM VirtualAccount va
+            JOIN FETCH va.payment p
+            WHERE p.status = :status
+            """)
+    List<VirtualAccount> findAllByPaymentStatusForAudit(@Param("status") TransactionStatus status);
 }

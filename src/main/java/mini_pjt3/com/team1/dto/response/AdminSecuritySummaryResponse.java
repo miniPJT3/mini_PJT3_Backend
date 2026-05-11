@@ -1,0 +1,10 @@
+package mini_pjt3.com.team1.dto.response;
+
+public record AdminSecuritySummaryResponse(
+        long totalMaskingAuditCount,
+        double maskingSuccessRate,
+        long violationsLast24Hours,
+        long openAlertCount,
+        long adminAccessLast24Hours
+) {
+}

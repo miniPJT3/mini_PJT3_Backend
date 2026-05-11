@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import mini_pjt3.com.team1.enums.TransactionStatus;
 
-import java.util.SimpleTimeZone;
 import java.util.UUID;
 
 @Entity
