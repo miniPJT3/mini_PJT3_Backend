@@ -6,59 +6,46 @@ server:
       force: true
 
 spring:
-
-  # [추가] SQL 초기화 설정
-  sql:
-    init:
-      mode: always  # 서버 켤 때마다 data.sql 실행 (기능 완성 후엔 never로 변경 추천)
   application:
     name: SafePay-Vault
 
-  # 1. Database 설정 (MySQL)
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/safepay_db?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
-    username:  root
-    password:  maria
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
 
-  # 2. JPA 설정
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
   jpa:
-    defer-datasource-initialization: true
+    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: update # 초기 개발 시에는 update, 엔티티 확정 후에는 validate
+      ddl-auto: create
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.MySQLDialect
+    defer-datasource-initialization: true
     open-in-view: false
 
-  # 3. Redis 설정 (토큰 및 계좌 TTL 관리용)
+  sql:
+    init:
+      mode: always
+
   data:
     redis:
       host: localhost
       port: 6379
 
-  # 4. OAuth2 설정 (구글 로그인)
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID} # 환경변수 사용
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            scope:
-              - email
-              - profile
-
-# 5. JWT 커스텀 설정
 jwt:
   secret: ${JWT_SECRET_KEY:your_default_secret_key_at_least_32_characters_long}
-  access-token-expiration: 3600000 # 1시간 (ms)
-  refresh-token-expiration: 604800000 # 7일 (ms)
+  access-token-expiration: 3600000
+  refresh-token-expiration: 604800000
 
-# 로그 레벨 설정
 logging:
   level:
-    org.springframework.security: DEBUG # 보안 흐름 확인용
+    org.springframework.security: DEBUG
     mini_pjt3.com.team1: DEBUG
