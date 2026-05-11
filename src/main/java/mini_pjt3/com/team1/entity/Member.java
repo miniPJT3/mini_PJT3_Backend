@@ -6,28 +6,43 @@ import mini_pjt3.com.team1.enums.Role;
 
 @Entity
 @Getter
+@Setter //setName, setProvider 메서드를 사용하기 위해 추가
+@AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Member extends BaseEntity {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(unique = true, nullable = false)
+    private String loginId; // 일반 로그인용 ID
+
+    private String password; // 암호화된 비밀번호
+
+    @Column(nullable = false)
+    private String name;
 
     @Column(unique = true, nullable = false)
     private String email;
 
-    private String username; // 일반 로그인 아이디
-    private String password; // 암호화된 비밀번호
-    private String name;     // 이름 또는 닉네임
-    private String provider; // google, kakao 등
+    private String phone;
+
+    //소셜 로그인 제공자(google 등)를 저장하기 위해 추가
+    private String provider;
 
     @Enumerated(EnumType.STRING)
-    private Role role;       // USER, SELLER, ADMIN
+    @Column(nullable = false)
+    private Role role; // USER, SELLER, ADMIN
 
+    // 필드명을 클래스 필드(loginId)와 일치시키고 phone도 추가했습니다.
     @Builder
-    public Member(String email, String username, String password, String name, String provider, Role role) {
-        this.email = email;
-        this.username = username;
+    public Member(String loginId, String password, String name, String email, String phone, String provider, Role role) {
+        this.loginId = loginId;
         this.password = password;
         this.name = name;
+        this.email = email;
+        this.phone = phone;
         this.provider = provider;
         this.role = role;
     }
