@@ -52,7 +52,7 @@ spring:
   # SQL 초기화 모드
   sql:
     init:
-      mode: never
+      mode: NEVER
 
 #  JWT 커스텀 설정
 jwt:

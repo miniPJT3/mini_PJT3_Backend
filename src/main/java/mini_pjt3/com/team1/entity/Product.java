@@ -33,7 +33,7 @@ public class Product extends BaseEntity {
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
         if (this.sellerId == null) {
-            this.sellerId = 1L;
+            this.sellerId = 10L;
         }
     }
 }

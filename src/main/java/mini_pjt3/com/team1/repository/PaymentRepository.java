@@ -24,4 +24,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     List<Payment> findAllByProduct_SellerId(Long sellerId);
 
+    long countByStatusAndCreatedAtAfter(TransactionStatus status, LocalDateTime createdAt);
+
 }

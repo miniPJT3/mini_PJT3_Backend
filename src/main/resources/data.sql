@@ -1,21 +1,12 @@
----- 1. Member 데이터 (ID 1번을 판매자로 설정)
----- 지호님이 강조하신 '안전성'을 위해 역할을 SELLER로 명확히 지정합니다.
---MERGE INTO member (id, username, email, password, name, role, created_at, updated_at)
---KEY (id)
---VALUES (1, 'jiho_seller', 'seller@example.com', 'password123', '홍지호(판매자)', 'SELLER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
---
------- 2. 일반 사용자 데이터 (테스트용 구매자 추가)
-----MERGE INTO member (id, username, email, password, name, role, created_at, updated_at)
-----KEY (id)
-----VALUES (2, 'user123', 'user@example.com', 'password123', '구매자A', 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
---
----- 3. 고정 상품 데이터 6개 (판매자 ID 1번 고정)
---MERGE INTO product (id, name, price, description, seller_id, created_at, updated_at)
---KEY (id)
---VALUES
---(1, '고성능 기계식 키보드', 129000, '코딩 효율을 높여주는 청축 키보드', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
---(2, '무선 노이즈캔슬링 헤드셋', 350000, '몰입을 돕는 최고의 사운드', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
---(3, '4K 모니터 27인치', 450000, '선명한 화질의 개발 전용 모니터', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
---(4, '인체공학 사무용 의자', 280000, '장시간 작업에도 허리가 편안한 의자', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
---(5, 'C타입 멀티 허브', 55000, '다양한 기기 연결을 위한 8in1 허브', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
---(6, '노트북 알루미늄 거치대', 32000, '거북목 방지를 위한 각도 조절 거치대', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+---- Product 엔티티 구조에 맞춘 상품 데이터 삽입
+---- INSERT IGNORE를 사용하여 기존 데이터와 충돌 시 무시합니다.
+--INSERT IGNORE INTO product (id, name, price, description, seller_id, created_at) VALUES
+--(1, '맥북 프로 14인치', 2800000, '전문가용 성능을 제공하는 M3 칩셋 탑재 노트북', 10, NOW()),
+--(2, '아이폰 15 프로', 1550000, '강력한 티타늄 외관과 프로급 카메라 시스템', 10, NOW()),
+--(3, '에어팟 프로 2세대', 320000, '최상의 노이즈 캔슬링을 지원하는 무선 이어폰', 10, NOW()),
+--(4, '기계식 게이밍 키보드', 180000, '빠른 반응 속도의 적축 스위치 게이밍 키보드', 10, NOW()),
+--(5, '4K 업무용 모니터', 450000, '생동감 넘치는 IPS 패널의 고해상도 모니터', 10, NOW()),
+--(6, '허먼밀러 에어론 체어', 2200000, '장시간 작업에도 편안한 인체공학적 사무용 의자', 10, NOW()),
+--(7, '노이즈 캔슬링 헤드폰', 420000, '몰입형 오디오 경험을 제공하는 무선 헤드폰', 10, NOW()),
+--(8, '스마트 워치 시리즈 9', 550000, '건강 추적과 연결성이 강화된 스마트 워치', 10, NOW()),
+--(9, '전동 높이조절 데스크', 850000, '자유로운 높이 조절로 건강을 지키는 스탠딩 책상', 10, NOW());
