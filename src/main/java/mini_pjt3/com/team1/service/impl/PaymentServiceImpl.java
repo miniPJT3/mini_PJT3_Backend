@@ -2,14 +2,18 @@ package mini_pjt3.com.team1.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import mini_pjt3.com.team1.dto.request.PaymentRequest;
+import mini_pjt3.com.team1.dto.request.SimulationRequest;
 import mini_pjt3.com.team1.dto.response.PaymentResponse;
+import mini_pjt3.com.team1.dto.response.SimulationResponse;
 import mini_pjt3.com.team1.entity.*;
+import mini_pjt3.com.team1.enums.AccountStatus;
 import mini_pjt3.com.team1.enums.BankCode;
 import mini_pjt3.com.team1.enums.TransactionStatus;
 import mini_pjt3.com.team1.repository.*;
 import mini_pjt3.com.team1.service.PaymentService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -169,6 +173,47 @@ public class PaymentServiceImpl implements PaymentService {
                             .build();
                 })
                 .toList();
+    }
+
+    @Override
+    public SimulationResponse checkSimulationLogic(SimulationRequest request) {
+        return virtualAccountRepository.findByAccountNumberWithPayment(request.getAccountNumber())
+                .map(va -> {
+                    Payment payment = va.getPayment();
+                    Member member = payment.getMember(); // 결제 정보에서 회원 정보 추출
+
+                    // 1. 이메일 검증 (이 사람이 맞는지?)
+                    if (!member.getEmail().equals(request.getEmail())) {
+                        // 이메일이 다르면 SimulationResponse를 보내는 게 아니라
+                        // 예외를 던져서 컨트롤러에서 403 에러가 나가게 합니다.
+                        throw new AccessDeniedException("해당 계좌에 대한 접근 권한이 없습니다.");
+                    }
+
+                    // 2. 계좌 상태 검증 (ACTIVE 인지)
+                    if (va.getStatus() != AccountStatus.ACTIVE) {
+                        return SimulationResponse.builder()
+                                .status("FAIL")
+                                .message("이미 사용되었거나 만료된 계좌입니다.")
+                                .build();
+                    }
+
+                    // 3. 금액 검증
+                    if (!payment.getTotalAmount().equals(request.getAmount())) {
+                        return SimulationResponse.builder()
+                                .status("FAIL")
+                                .message("금액 불일치: 주문 금액은 " + payment.getTotalAmount() + "원입니다.")
+                                .build();
+                    }
+
+                    return SimulationResponse.builder()
+                            .status("SUCCESS")
+                            .message("검증 성공: 모든 정보가 일치합니다.")
+                            .build();
+                })
+                .orElse(SimulationResponse.builder()
+                        .status("FAIL")
+                        .message("존재하지 않는 가상계좌 번호입니다.")
+                        .build());
     }
 
 }
