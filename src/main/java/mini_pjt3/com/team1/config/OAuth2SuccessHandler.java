@@ -21,29 +21,37 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, 
                                         Authentication authentication) throws IOException {
         
-        // 1. JWT 토큰 생성 (메서드명 createToken으로 일치 확인)
+        // JWT 토큰 생성
         String token = jwtUtil.createToken(authentication); 
 
-        // 2. HTTP-Only 쿠키 생성
+        //HTTP-Only 쿠키 생성 (보안 설정)
         ResponseCookie cookie = ResponseCookie.from("accessToken", token)
                 .path("/")
-                .httpOnly(true)
-                .secure(false)
-                .maxAge(3600)
-                .sameSite("Lax")
+                .httpOnly(true)    // JavaScript 접근 차단
+                .secure(false)     // 로컬 환경(http)에서는 false, 배포(https) 시 true
+                .maxAge(3600)      // 1시간 유지
+                .sameSite("Lax")   // 크로스 사이트 요청 설정
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        //사용자 권한(Role)에 따른 리다이렉트 경로 설정
-        // 권한 정보를 가져와서 판매자(SELLER)면 관리자 대시보드로 보냅니다.
+        //DB Role 기반 리다이렉트 경로 설정
         String role = authentication.getAuthorities().iterator().next().getAuthority();
-        String targetUrl = "http://localhost:5173/";
+        String targetUrl = "http://localhost:5173";
 
-        if ("ROLE_SELLER".equals(role)) {
-            targetUrl = "http://localhost:5173/admin/dashboard";
+        // DB의 role 값에 따라 목적지 분기 처리
+        if ("ROLE_ADMIN".equals(role)) {
+            // ADMIN 권한: 관리자 대시보드
+            targetUrl += "/admin/dashboard";
+        } else if ("ROLE_SELLER".equals(role)) {
+            // SELLER 권한: 판매자 대시보드
+            targetUrl += "/seller";
         } else if ("ROLE_USER".equals(role)) {
-            targetUrl = "http://localhost:5173/dashboard"; 
+            // USER 권한: 일반 사용자 대시보드
+            targetUrl += "/user";
+        } else {
+            // 기본 경로 (로그인 페이지 등)
+            targetUrl += "/login";
         }
 
         response.sendRedirect(targetUrl); 
