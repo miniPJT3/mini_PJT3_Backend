@@ -15,42 +15,42 @@ Controller/API 계층은 클라이언트의 요청을 받아 Service 계층으�
 
 ## 3. 주요 Controller/API 목록 및 상세 설계
 
-### 3.1. VirtualAccountController (Service A 관련)
+### 3.1. AuthController
 
-**설명**: 가상 계좌 발급, 조회 기능을 제공합니다.
-
-| 엔드포인트 | HTTP 메서드 | 설명 | 요청 DTO | 응답 DTO | 비고 |
-|---|---|---|---|---|---|
-| `/api/v1/virtual-accounts` | POST | 새로운 가상 계좌를 발급합니다. | `VirtualAccountCreateRequest` | `VirtualAccountCreateResponse` | 인증 필요 (구매자) |
-| `/api/v1/virtual-accounts/{orderId}` | GET | `orderId`에 해당하는 가상 계좌 정보를 조회합니다. | (없음) | `VirtualAccountCreateResponse` | 인증 필요 (구매자) |
-
-### 3.2. DepositController (Service B 관련)
-
-**설명**: 외부 은행으로부터의 입금 알림(Webhook)을 수신하고, 결제 상태를 조회하는 기능을 제공합니다.
+**설명**: 사용자 인증 및 회원가입 기능을 제공합니다.
 
 | 엔드포인트 | HTTP 메서드 | 설명 | 요청 DTO | 응답 DTO | 비고 |
 |---|---|---|---|---|---|
-| `/api/v1/deposits/webhook` | POST | 외부 은행으로부터 입금 알림을 수신합니다. | `DepositNotificationRequest` | (없음, HTTP 200 OK) | Webhook 보안 (API Key, IP 화이트리스트 검증) |
-| `/api/v1/payments/{payUuid}/status` | GET | `payUuid`를 통해 결제 상태를 조회합니다. | (없음) | `PaymentStatusResponse` | 인증 필요 (구매자/판매자) |
-| `/api/v1/admin/deposits/simulate` | POST | 입금 시뮬레이션을 수행합니다. (관리자용) | `DepositNotificationRequest` | (없음, HTTP 200 OK) | 관리자 권한 필요 |
+| `/api/v1/auth/signup` | POST | 새로운 회원을 등록합니다. | `MemberJoinRequest` | `MemberResponse` | |
+| `/api/v1/auth/login` | POST | 사용자 로그인을 처리하고 JWT 토큰을 발급합니다. | `LoginRequest` | `TokenResponse` | |
 
-### 3.3. SalesController (Service C 관련)
+### 3.2. PaymentController
 
-**설명**: 판매자 관제 페이지를 위한 매출 통계 및 보안 로그 조회 기능을 제공합니다.
-
-| 엔드포인트 | HTTP 메서드 | 설명 | 요청 DTO | 응답 DTO | 비고 |
-|---|---|---|---|---|---|
-| `/api/v1/admin/sales/statistics` | GET | 특정 날짜의 매출 통계를 조회합니다. | `@RequestParam LocalDate date` | `SalesStatisticsResponse` | 관리자 권한 필요 |
-| `/api/v1/admin/security/logs` | GET | 보안 로그 목록을 조회합니다. | `@RequestParam int page, @RequestParam int size` | `List<SecurityLogDto>` | 관리자 권한 필요 |
-
-### 3.4. UserController
-
-**설명**: 사용자 관련 API를 제공합니다. (예: 사용자 정보 조회, 회원가입 등)
+**설명**: 결제 생성 및 조회 기능을 제공합니다.
 
 | 엔드포인트 | HTTP 메서드 | 설명 | 요청 DTO | 응답 DTO | 비고 |
 |---|---|---|---|---|---|
-| `/api/v1/users/{userId}` | GET | 사용자 정보를 조회합니다. | (없음) | `UserDto` | 인증 필요 (본인 또는 관리자) |
-| `/api/v1/users` | POST | 새로운 사용자를 생성합니다. (회원가입) | `UserCreateRequest` | `UserDto` | |
+| `/api/v1/payments` | POST | 새로운 결제를 생성합니다. | `PaymentRequest` | `PaymentResponse` | 인증 필요 |
+| `/api/v1/payments/{paymentId}` | GET | `paymentId`에 해당하는 결제 정보를 조회합니다. | (없음) | `PaymentResponse` | 인증 필요 |
+| `/api/v1/payments/{paymentId}/status` | GET | `paymentId`에 해당하는 결제의 상태를 조회합니다. | (없음) | `PaymentResponse` | 인증 필요 |
+
+### 3.3. DashboardController (관리자/판매자 대시보드)
+
+**설명**: 판매자 통계 및 매출 조회 기능을 제공합니다.
+
+| 엔드포인트 | HTTP 메서드 | 설명 | 요청 DTO | 응답 DTO | 비고 |
+|---|---|---|---|---|---|
+| `/api/v1/admin/statistics/{sellerId}` | GET | 특정 판매자의 통계 정보를 조회합니다. | (없음) | `StatResponse` | 관리자/판매자 권한 필요 |
+| `/api/v1/admin/sales/{sellerId}` | GET | 특정 판매자의 매출 정보를 조회합니다. | (없음) | `StatResponse` | 관리자/판매자 권한 필요 |
+
+### 3.4. PaymentHistoryController
+
+**설명**: 사용자의 결제 이력 조회 기능을 제공합니다.
+
+| 엔드포인트 | HTTP 메서드 | 설명 | 요청 DTO | 응답 DTO | 비고 |
+|---|---|---|---|---|---|
+| `/api/v1/payment-history` | GET | 모든 결제 이력을 조회합니다. | (없음) | `List<PaymentResponse>` | 인증 필요 |
+| `/api/v1/payment-history/{paymentId}` | GET | `paymentId`에 해당하는 결제 이력 상세 정보를 조회합니다. | (없음) | `PaymentResponse` | 인증 필요 |
 
 ## 4. 논의 사항
 

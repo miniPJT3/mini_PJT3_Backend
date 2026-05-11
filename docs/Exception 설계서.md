@@ -14,39 +14,36 @@
 
 ## 3. 주요 예외 유형 및 처리 전략
 
-### 3.1. 비즈니스 예외 (Business Exceptions)
+## 3. 현재 예외 처리 현황 및 제안
 
-**설명**: 애플리케이션의 비즈니스 규칙을 위반하는 경우 발생하는 예외입니다. 예측 가능하며, 클라이언트에게 특정 오류 상황을 명확하게 전달해야 합니다. `RuntimeException`을 상속받아 Unchecked Exception으로 처리합니다.
+**현황**: 현재 시스템에는 비즈니스 로직을 위한 별도의 사용자 정의 예외 클래스(`Custom Exception`)나 전역 예외 처리를 담당하는 `@ControllerAdvice` 구현체가 확인되지 않습니다. 모든 예외는 Spring Boot의 기본 예외 처리 메커니즘에 의존하고 있습니다. 이로 인해 클라이언트에게 일관되지 않거나 불명확한 에러 응답이 전달될 수 있습니다.
 
-| 예외 클래스명 | HTTP Status | 에러 코드 | 설명 | 발생 시나리오 (예시) |
-|---|---|---|---|---|
-| `VirtualAccountNotFoundException` | `404 Not Found` | `VA_001` | 가상 계좌를 찾을 수 없음 | 존재하지 않는 `orderId`로 가상 계좌 조회 시 |
-| `VirtualAccountExpiredException` | `400 Bad Request` | `VA_002` | 만료된 가상 계좌에 입금 시도 | `EXPIRED` 상태의 가상 계좌에 입금 요청 시 |
-| `DuplicateOrderPaymentException` | `409 Conflict` | `PAY_001` | 이미 처리된 주문/결제 요청 | 동일 `orderId`에 대한 중복 가상 계좌 발급 또는 입금 시도 (멱등성 위반) |
-| `PaymentMismatchException` | `400 Bad Request` | `PAY_002` | 입금 금액 불일치 | 요청 금액과 실제 입금 금액이 다를 경우 |
-| `UnauthorizedAccessException` | `403 Forbidden` | `SEC_001` | 접근 권한 없음 | RBAC 정책 위반 또는 인증 실패 |
-| `InvalidApiKeyException` | `401 Unauthorized` | `SEC_002` | 유효하지 않은 API Key | Webhook 호출 시 잘못된 API Key 사용 |
-| `InvalidIpAddressException` | `403 Forbidden` | `SEC_003` | 허용되지 않은 IP 주소 | Webhook 호출 시 IP Whitelist에 없는 IP 사용 |
+**제안**: 시스템의 안정성과 사용자 경험 향상을 위해 다음과 같은 예외 처리 전략 도입을 제안합니다.
 
+### 3.1. 비즈니스 예외 (Business Exceptions) 도입
+
+**목표**: 애플리케이션의 도메인 규칙 위반 시 명확하고 예측 가능한 에러 응답을 클라이언트에게 제공.
 **구현 방안**:
-- 각 비즈니스 예외 클래스는 `ErrorCode` Enum을 포함하여 구체적인 에러 코드를 제공합니다.
-- `CustomException` 추상 클래스를 만들어 공통 필드(예: `errorCode`, `message`)를 관리합니다.
+- `ApiException`과 같은 추상 기본 예외 클래스를 정의하고, 이를 상속받아 각 비즈니스 도메인에 특화된 예외 클래스(예: `MemberNotFoundException`, `PaymentFailedException`)를 생성합니다.
+- 각 비즈니스 예외는 특정 `ErrorCode` (Enum)와 연관되어 에러의 종류를 명확히 식별할 수 있도록 합니다.
+- `RuntimeException`을 상속받아 Unchecked Exception으로 처리하여 코드의 간결성을 유지합니다.
 
-### 3.2. 기술적 예외 (Technical Exceptions)
+### 3.2. 전역 예외 처리 (`@RestControllerAdvice`) 도입
 
-**설명**: 시스템 내부의 문제(DB 연결 오류, 외부 API 호출 실패 등)로 인해 발생하는 예외입니다. 클라이언트에게는 상세 정보를 노출하지 않고, 서버 로그에 기록하여 관리자가 처리하도록 합니다.
-
-| 예외 유형 (예시) | HTTP Status | 에러 코드 | 설명 | 처리 방안 |
-|---|---|---|---|---|
-| `DataAccessException` (Spring Data JPA) | `500 Internal Server Error` | `SYS_001` | 데이터베이스 접근 오류 | 로그 기록 후 일반적인 서버 에러 응답 |
-| `RestClientException` (Spring RestTemplate/WebClient) | `500 Internal Server Error` | `SYS_002` | 외부 API 호출 실패 | 로그 기록 후 일반적인 서버 에러 응답 |
-| `IOException` | `500 Internal Server Error` | `SYS_003` | I/O 작업 오류 | 로그 기록 후 일반적인 서버 에러 응답 |
-| `IllegalArgumentException` / `IllegalStateException` | `400 Bad Request` / `500 Internal Server Error` | `GEN_001` / `GEN_002` | 잘못된 인자 / 유효하지 않은 상태 | 상황에 따라 400 또는 500 응답, 로그 기록 |
-
+**목표**: Controller 계층에서 발생하는 모든 예외를 중앙 집중적으로 처리하여 일관된 에러 응답 형식 유지 및 코드 중복 방지.
 **구현 방안**:
-- `@ControllerAdvice`를 통해 각 기술적 예외에 대한 `@ExceptionHandler`를 정의합니다.
+- `@RestControllerAdvice` 어노테이션이 적용된 클래스를 생성하여 전역 예외 핸들러 역할을 수행하도록 합니다.
+- `@ExceptionHandler` 어노테이션을 사용하여 각 예외 타입(비즈니스 예외, 기술적 예외 포함)에 맞는 처리 로직을 구현합니다.
+- 예외 발생 시 `ErrorResponse` DTO를 사용하여 클라이언트에게 표준화된 에러 메시지와 HTTP 상태 코드를 반환합니다.
+- 상세한 예외 정보는 서버 로그에 기록하여 운영 및 디버깅에 활용합니다.
+
+### 3.3. 기술적 예외 (Technical Exceptions) 처리 강화
+
+**목표**: 시스템 내부 문제로 인한 예외 발생 시 클라이언트에게 상세 정보를 노출하지 않고, 서버 로그를 통해 문제 진단에 필요한 정보 확보.
+**구현 방안**:
+- `@RestControllerAdvice` 내에서 `DataAccessException`, `RestClientException`, `IOException` 등 일반적인 기술적 예외를 포괄적으로 처리하는 `ExceptionHandler`를 정의합니다.
+- 클라이언트에게는 `500 Internal Server Error`와 같은 일반적인 HTTP 상태 코드와 추상화된 에러 메시지를 반환합니다.
 - 예외 발생 시 스택 트레이스 및 관련 컨텍스트 정보를 상세히 로깅합니다.
-- 클라이언트에게는 `Internal Server Error` (500) 또는 `Bad Request` (400)와 같은 일반적인 HTTP 상태 코드와 추상화된 에러 메시지를 반환합니다.
 
 ## 4. 에러 응답 형식 (ErrorResponse DTO)
 

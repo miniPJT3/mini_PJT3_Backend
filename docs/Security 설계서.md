@@ -3,6 +3,7 @@
 ## 1. 개요
 
 본 시스템의 보안 설계는 "보안 격리 기반 일회용 가상 계좌 결제 시스템" 기획서의 핵심 가치인 '데이터 휘발성', '네트워크 격리', '결제 정합성'을 바탕으로, 고객의 민감 정보 보호 및 시스템 무결성 유지를 목표로 합니다. Spring Security를 중심으로 인증(Authentication), 인가(Authorization) 및 기타 보안 메커니즘을 정의합니다.
+**주의**: 본 문서는 시스템의 포괄적인 보안 아키텍처 및 목표를 기술하며, 여기에 명시된 일부 상세 메커니즘 및 고급 기능은 현재 코드베이스에 완전히 구현되지 않고 아키텍처 목표로 제시될 수 있습니다. 실제 구현 현황은 코드 검토를 통해 확인해야 합니다.
 
 ## 2. 보안 목표 및 원칙
 
@@ -19,10 +20,10 @@
         - 로그인 성공 시 Access Token 및 Refresh Token 발급.
         - Access Token은 단기 유효 기간, Refresh Token은 장기 유효 기간.
         - 매 요청 시 Access Token을 HTTP Header (`Authorization: Bearer <token>`)에 포함하여 전송.
-        - Refresh Token은 Redis에 저장하여 관리 (탈취 시 무효화 가능).
+        - Refresh Token은 Redis에 저장하여 관리 (탈취 시 무효화 가능). (현재 미구현, 토큰 자체의 만료 시간으로 관리)
 - **외부 은행 Webhook**:
-    - **API Key 인증**: `DepositNotificationRequest`에 포함된 `apiKey`를 사용하여 유효성 검증.
-    - **IP Whitelist**: 사전에 정의된 IP 주소(들)에서만 요청을 허용하여 접근 제어. (API Gateway 또는 Spring Security Filter에서 처리)
+    - **API Key 인증**: `DepositNotificationRequest`에 포함된 `apiKey`를 사용하여 유효성 검증. (현재 미구현)
+    - **IP Whitelist**: 사전에 정의된 IP 주소(들)에서만 요청을 허용하여 접근 제어. (API Gateway 또는 Spring Security Filter에서 처리) (현재 미구현)
 
 ## 4. 인가 (Authorization)
 
@@ -31,43 +32,43 @@
     - **권한 (Authority)**: 각 역할에 따라 접근 가능한 리소스 및 기능 정의.
     - **Spring Security 활용**:
         - URL 패턴 기반 권한 설정 (`.antMatchers("/api/v1/admin/**").hasRole("ADMIN")`)
-        - 메서드 수준 권한 설정 (`@PreAuthorize("hasRole('ADMIN')")`)
-- **API Gateway 연동**: API Gateway 단에서 1차적인 인가 처리를 수행하고, 백엔드 서비스에서는 최종 검증을 수행합니다.
+        - 메서드 수준 권한 설정 (`@PreAuthorize("hasRole('ADMIN')")`) (현재 미구현)
+- **API Gateway 연동**: API Gateway 단에서 1차적인 인가 처리를 수행하고, 백엔드 서비스에서는 최종 검증을 수행하도록 설계되었습니다. (백엔드 코드 자체에는 1차 인가 로직 없음)
 
 ## 5. 주요 보안 메커니즘 및 상세 설계
 
-### 5.1. 가상 계좌 민감 정보 보호
+### 5.1. 가상 계좌 민감 정보 보호 (현재 미구현)
 
-- **DB 암호화**: `VirtualAccount` 엔티티의 `account_number` 필드는 DB 저장 시 암호화하여 저장합니다. (예: Jasypt, AWS KMS 연동 등)
-- **런타임 복호화**: 필요 시(예: 가상 계좌 발급 직후) 복호화하여 사용하되, 메모리 상에서 최소 시간만 유지 후 파기.
-- **데이터 마스킹**: 결제 완료 시 `account_number`는 마스킹 처리되고 (`masked_account_number` 필드 활용), 원본은 소프트 삭제 처리됩니다.
-- **로그 마스킹**: Logback 등의 로깅 프레임워크 설정을 통해 로그 파일에 계좌 번호 패턴이 포함될 경우 자동으로 마스킹 처리합니다.
+- **DB 암호화**: `VirtualAccount` 엔티티의 `account_number` 필드는 DB 저장 시 암호화하여 저장합니다. (예: Jasypt, AWS KMS 연동 등) (현재 미구현)
+- **런타임 복호화**: 필요 시(예: 가상 계좌 발급 직후) 복호화하여 사용하되, 메모리 상에서 최소 시간만 유지 후 파기. (현재 미구현)
+- **데이터 마스킹**: 결제 완료 시 `account_number`는 마스킹 처리되고 (`masked_account_number` 필드 활용), 원본은 소프트 삭제 처리됩니다. (현재 미구현)
+- **로그 마스킹**: Logback 등의 로깅 프레임워크 설정을 통해 로그 파일에 계좌 번호 패턴이 포함될 경우 자동으로 마스킹 처리합니다. (현재 미구현)
 
-### 5.2. 분산 락 (Distributed Lock)
+### 5.2. 분산 락 (Distributed Lock) (현재 미구현)
 
 - **목적**: 동일 주문에 대한 중복 가상 계좌 발급 요청 방지.
 - **구현**: Redis를 활용한 분산 락 구현. `Redisson` 라이브러리 사용 검토.
 - **동작 방식**: 가상 계좌 발급 전 `orderId`를 키로 락을 획득하고, 발급 완료 후 락을 해제. 락 획득 실패 시 중복 요청으로 간주하여 에러 처리.
 
-### 5.3. 멱등성 (Idempotency)
+### 5.3. 멱등성 (Idempotency) (현재 미구현)
 
 - **목적**: 동일 트랜잭션에 대한 중복 결제 승인 방지.
-- **구현**: `PaymentHistory` 엔티티의 `transaction_id` 필드에 Unique 인덱스 적용 및 저장 전 존재 여부 확인. (Service 계층에서 처리)
-- **동작 방식**: 외부 은행 Webhook 수신 시 `transaction_id`를 사용하여 이미 처리된 요청인지 확인.
+- **구현**: `PaymentHistory` 엔티티의 `transaction_id` 필드에 Unique 인덱스 적용 및 저장 전 존재 여부 확인. (Service 계층에서 처리) (현재 미구현)
+- **동작 방식**: 외부 은행 Webhook 수신 시 `transaction_id`를 사용하여 이미 처리된 요청인지 확인. (현재 미구현)
 
-### 5.4. Rate Limiting (비정상적인 접근 탐지)
+### 5.4. Rate Limiting (비정상적인 접근 탐지) (현재 미구현)
 
 - **목적**: 서비스 거부 공격(DoS) 방지 및 비정상적인 요청 패턴 탐지.
 - **구현**:
-    - API Gateway 단에서 Nginx 또는 전용 솔루션을 통해 요청 속도 제한.
-    - 백엔드 서비스에서는 Spring Cloud Gateway 또는 `Bucket4j`와 같은 라이브러리를 활용하여 특정 IP 또는 사용자별 API 호출 횟수 제한.
-- **탐지 및 알림**: 비정상적인 Rate Limiting 위반 IP를 탐지하여 관리자에게 알림.
+    - API Gateway 단에서 Nginx 또는 전용 솔루션을 통해 요청 속도 제한. (현재 미구현)
+    - 백엔드 서비스에서는 Spring Cloud Gateway 또는 `Bucket4j`와 같은 라이브러리를 활용하여 특정 IP 또는 사용자별 API 호출 횟수 제한. (현재 미구현)
+- **탐지 및 알림**: 비정상적인 Rate Limiting 위반 IP를 탐지하여 관리자에게 알림. (현재 미구현)
 
-### 5.5. 시크릿 관리 (Secrets Management)
+### 5.5. 시크릿 관리 (Secrets Management) (AWS Secrets Manager 연동 미구현)
 
 - **목적**: DB 패스워드, API Key 등 민감 정보를 안전하게 관리하고 런타임에 주입.
-- **구현**: AWS Secrets Manager 활용.
-- **동작 방식**: 애플리케이션 시작 시 Secrets Manager에서 필요한 시크릿을 조회하여 환경 변수 또는 애플리케이션 설정으로 주입. 코드 내에 하드코딩 방지.
+- **구현**: 현재는 Spring의 `@Value` 어노테이션을 통해 환경 변수(Environment Variable)를 주입하는 방식을 사용합니다. AWS Secrets Manager 활용은 향후 구현 예정입니다.
+- **동작 방식**: 애플리케이션 시작 시 환경 변수에서 필요한 시크릿을 조회하여 설정으로 주입. (AWS Secrets Manager 연동 시: Secrets Manager에서 필요한 시크릿을 조회하여 환경 변수 또는 애플리케이션 설정으로 주입. 코드 내에 하드코딩 방지.)
 
 ## 6. 인프라 보안 (Infra-level Security)
 

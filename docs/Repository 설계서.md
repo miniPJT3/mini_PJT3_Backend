@@ -16,15 +16,13 @@ Repository 계층은 데이터 영속성(Persistence)을 담당하며, 데이터
 
 ### 3.1. VirtualAccountRepository
 
-**설명**: `VirtualAccount` 엔티티의 영속성을 관리합니다. 가상 계좌 발급, 조회, 만료 처리 및 소프트 삭제 관련 기능을 제공합니다.
+**설명**: `VirtualAccount` 엔티티의 영속성을 관리합니다. 가상 계좌 발급, 조회, 만료 처리 관련 기능을 제공합니다.
 
 | 메소드 시그니처 | 설명 | 비고 |
 |---|---|---|
-| `VirtualAccount save(VirtualAccount virtualAccount)` | 새로운 가상 계좌를 저장하거나 기존 계좌를 업데이트합니다. | |
-| `Optional<VirtualAccount> findByOrderId(Long orderId)` | `orderId`로 가상 계좌를 조회합니다. (1:1 관계) | |
+| `VirtualAccount save(VirtualAccount virtualAccount)` | 새로운 가상 계좌를 저장하거나 기존 계좌를 업데이트합니다. | (JpaRepository 기본 제공) |
 | `Optional<VirtualAccount> findByAccountNumber(String accountNumber)` | 계좌 번호로 가상 계좌를 조회합니다. | 암호화된 계좌 번호 조회에 대한 고려 필요. JPA 기본 제공 기능으로 불가할 시 QueryDSL 등 고려 |
-| `List<VirtualAccount> findByExpiredAtBeforeAndStatus(LocalDateTime datetime, AccountStatus status)` | 특정 시간 이전에 만료되는 활성 상태의 가상 계좌 목록을 조회합니다. (스케줄러용) | `IDX_VA_EXPIRED_AT` 활용 |
-| `void softDeleteByOrderId(Long orderId)` | `orderId`에 해당하는 가상 계좌의 `deleted_at` 필드를 업데이트하여 소프트 삭제 처리합니다. | `@Modifying`, `@Query` 활용 |
+| `List<VirtualAccount> findAllByStatusAndExpiredAtBefore(AccountStatus status, LocalDateTime expiredAt)` | 특정 시간 이전에 만료되는 활성 상태의 가상 계좌 목록을 조회합니다. (스케줄러용) | `IDX_VA_EXPIRED_AT` 활용 |
 
 ### 3.2. PaymentRepository
 
@@ -32,30 +30,39 @@ Repository 계층은 데이터 영속성(Persistence)을 담당하며, 데이터
 
 | 메소드 시그니처 | 설명 | 비고 |
 |---|---|---|
-| `Payment save(Payment payment)` | 새로운 결제 정보를 저장하거나 기존 결제 정보를 업데이트합니다. | |
+| `Payment save(Payment payment)` | 새로운 결제 정보를 저장하거나 기존 결제 정보를 업데이트합니다. | (JpaRepository 기본 제공) |
 | `Optional<Payment> findByPayUuid(String payUuid)` | `payUuid`로 결제 정보를 조회합니다. | |
-| `Optional<Payment> findByOrderId(Long orderId)` | `orderId`로 결제 정보를 조회합니다. | |
-| `Optional<Payment> findByTransactionId(String transactionId)` | `transactionId`로 결제 정보를 조회합니다. (멱등성 체크용) | `IDX_PAY_TX_ID` 활용 |
+| `List<Payment> findAllByMember(Member member)` | 특정 회원에 해당하는 모든 결제 정보를 조회합니다. | |
 | `List<Payment> findByStatusAndCreatedAtBetween(TransactionStatus status, LocalDateTime start, LocalDateTime end)` | 특정 상태와 기간에 해당하는 결제 목록을 조회합니다. (판매자 대시보드 통계용) | `IDX_ORDER_STATUS_DATE` 활용 (Payment에 직접 status, created_at이 있다고 가정) |
 
 ### 3.3. PaymentHistoryRepository
 
-**설명**: `PaymentHistory` 엔티티의 영속성을 관리합니다. 최종 입금 확인 및 정산 내역 관련 기능을 제공합니다.
+**설명**: `PaymentHistory` 엔티티의 영속성을 관리합니다. 현재는 JpaRepository의 기본 기능만을 활용합니다.
 
 | 메소드 시그니처 | 설명 | 비고 |
 |---|---|---|
-| `PaymentHistory save(PaymentHistory paymentHistory)` | 새로운 입금 내역을 저장합니다. | |
-| `Optional<PaymentHistory> findByOrderId(Long orderId)` | `orderId`로 입금 내역을 조회합니다. | |
-| `boolean existsByTransactionId(String transactionId)` | `transactionId`로 입금 내역 존재 여부를 확인합니다. (멱등성 체크) | |
+| `PaymentHistory save(PaymentHistory paymentHistory)` | 새로운 입금 내역을 저장합니다. | (JpaRepository 기본 제공) |
 
-### 3.4. UserRepository
+### 3.4. MemberRepository
 
-**설명**: `User` 엔티티의 영속성을 관리합니다.
+**설명**: `Member` 엔티티의 영속성을 관리합니다. 사용자(회원) 정보를 조회, 저장, 업데이트하는 기능을 제공합니다.
 
 | 메소드 시그니처 | 설명 | 비고 |
 |---|---|---|
-| `Optional<User> findById(Long id)` | 사용자 ID로 사용자 정보를 조회합니다. | |
-| `User save(User user)` | 사용자 정보를 저장하거나 업데이트합니다. | |
+| `Optional<Member> findByEmail(String email)` | 이메일로 회원 정보를 조회합니다. | |
+| `boolean existsByEmail(String email)` | 이메일로 회원 존재 여부를 확인합니다. | |
+
+### 3.5. SellerSalesStatRepository
+
+**설명**: `SellerSalesStat` 엔티티의 영속성을 관리합니다. 판매자 매출 통계 정보를 조회하고 존재 여부를 확인하는 기능을 제공합니다.
+
+| 메소드 시그니처 | 설명 | 비고 |
+|---|---|---|
+| `SellerSalesStat save(SellerSalesStat sellerSalesStat)` | 새로운 판매자 매출 통계 정보를 저장하거나 업데이트합니다. | (JpaRepository 기본 제공) |
+| `Optional<SellerSalesStat> findBySellerId(Long sellerId)` | 판매자 ID로 판매자 매출 통계 정보를 조회합니다. | |
+| `Optional<SellerSalesStat> findBySellerIdAndStatDate(Long sellerId, String statDate)` | 판매자 ID와 통계 날짜로 판매자 매출 통계 정보를 조회합니다. | |
+| `boolean existsBySellerId(Long sellerId)` | 판매자 ID로 판매자 매출 통계 정보의 존재 여부를 확인합니다. | |
+| `boolean existsBySellerIdAndStatDate(Long sellerId, String statDate)` | 판매자 ID와 통계 날짜로 판매자 매출 통계 정보의 존재 여부를 확인합니다. | |
 
 ## 4. 논의 사항
 
