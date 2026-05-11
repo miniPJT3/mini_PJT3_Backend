@@ -7,6 +7,7 @@ import mini_pjt3.com.team1.entity.Payment;
 import mini_pjt3.com.team1.entity.Member;
 import mini_pjt3.com.team1.entity.PaymentHistory;
 import mini_pjt3.com.team1.entity.VirtualAccount;
+import mini_pjt3.com.team1.enums.PaymentStatus;
 import mini_pjt3.com.team1.enums.BankCode;
 import mini_pjt3.com.team1.enums.TransactionStatus;
 import mini_pjt3.com.team1.repository.MemberRepository;
@@ -89,7 +90,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("결제 없음"));
 
-        payment.confirm();
+        payment.setStatus(PaymentStatus.PAID);
 
         PaymentHistory history = PaymentHistory.builder()
                 .payment(payment)
@@ -126,7 +127,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("결제 없음"));
 
-        payment.cancel();
+        payment.setStatus(PaymentStatus.FAILED);
     }
 
 }

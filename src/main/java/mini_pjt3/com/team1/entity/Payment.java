@@ -2,7 +2,7 @@ package mini_pjt3.com.team1.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import mini_pjt3.com.team1.enums.TransactionStatus;
+import mini_pjt3.com.team1.enums.PaymentStatus;
 import java.util.UUID;
 
 @Entity
@@ -18,7 +18,8 @@ public class Payment extends BaseEntity {
     private Long amount;
 
     @Enumerated(EnumType.STRING)
-    private TransactionStatus status;
+    @Setter
+    private PaymentStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id")
@@ -29,14 +30,6 @@ public class Payment extends BaseEntity {
         this.payUuid = UUID.randomUUID().toString();
         this.amount = amount;
         this.member = member;
-        this.status = TransactionStatus.PENDING;
-    }
-
-    public void confirm() {
-        this.status = TransactionStatus.SUCCESS;
-    }
-
-    public void cancel() {
-        this.status = TransactionStatus.CANCELED;
+        this.status = PaymentStatus.PENDING;
     }
 }

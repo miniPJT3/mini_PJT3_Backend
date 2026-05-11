@@ -12,34 +12,32 @@ public class SellerSalesStat extends BaseEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private Long sellerId;
+    private Long sellerId; // nullable in DB
 
-    @Column(nullable = false, unique = true)
-    private String statDate;
+    private String statDate; // nullable in DB
 
-    @ColumnDefault("0")
+    private String bottomProduct;
+    private Long dailyAmount;
+    private Integer dailyCount;
+    private String topProduct;
+
+    @Column(columnDefinition = "bigint default 0")
     private Long totalSales = 0L;
-    @ColumnDefault("0")
+    @Column(columnDefinition = "bigint default 0")
     private Long todaySales = 0L;
-    @ColumnDefault("0")
+    @Column(columnDefinition = "bigint default 0")
     private Long paymentCount = 0L;
-    @ColumnDefault("0")
+    @Column(columnDefinition = "bigint default 0")
     private Long successCount = 0L;
 
     @Builder
-    public SellerSalesStat(Long sellerId, String statDate) {
+    public SellerSalesStat(Long sellerId, String statDate, String bottomProduct, Long dailyAmount, Integer dailyCount, String topProduct) {
         this.sellerId = sellerId;
         this.statDate = statDate;
-        this.totalSales = 0L;
-        this.todaySales = 0L;
-        this.paymentCount = 0L;
-        this.successCount = 0L;
-    }
-
-    public void init(Long sellerId, String statDate) {
-        this.sellerId = sellerId;
-        this.statDate = statDate;
+        this.bottomProduct = bottomProduct;
+        this.dailyAmount = dailyAmount;
+        this.dailyCount = dailyCount;
+        this.topProduct = topProduct;
         this.totalSales = 0L;
         this.todaySales = 0L;
         this.paymentCount = 0L;
