@@ -24,7 +24,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         
         // 실제 JWT 토큰 생성 (주석 해제 및 실제 메서드 호출)
         // authentication 객체에서 유저 정보를 추출하여 토큰을 만듦.
-        String token = jwtUtil.generateToken(authentication); 
+        String token = jwtUtil.createToken(authentication); 
 
         // HTTP-Only 쿠키 생성
         ResponseCookie cookie = ResponseCookie.from("accessToken", token)
