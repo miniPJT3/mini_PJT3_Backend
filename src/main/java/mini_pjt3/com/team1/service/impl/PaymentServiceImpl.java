@@ -146,29 +146,40 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<PaymentResponse> getMyHistory(Long memberId) {
-        List<Payment> payments = paymentRepository.findAllByMemberId(memberId);
+    @Transactional
+    public PaymentResponse issueByLoginId(String loginId, PaymentRequest dto) {
+        // 1. login_id를 사용하여 DB에서 Member를 찾습니다.
+        Member member = memberRepository.findByLoginId(loginId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. 아이디: " + loginId));
 
+        // 2.찾은 멤버의 PK(id)를 넘겨주면 됩니다.
+        return issueVirtualAccount(member.getId(), dto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PaymentResponse> getMyHistoryByLoginId(String loginId) {
+        // 1. login_id로 멤버를 먼저 찾습니다.
+        Member member = memberRepository.findByLoginId(loginId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        // 2. 찾은 멤버의 ID로 결제 내역을 가져옵니다.
+        List<Payment> payments = paymentRepository.findAllByMemberId(member.getId());
+
+        // 3. DTO 변환 로직
         return payments.stream()
                 .map(p -> {
-                    // 1. 해당 결제(p)에 연결된 가상계좌 엔티티를 통째로 찾습니다
                     Optional<VirtualAccount> vaOptional = virtualAccountRepository.findByPaymentId(p.getId());
-
-                    // 2. 계좌번호와 은행명을 안전하게 추출
                     String accountNum = vaOptional.map(VirtualAccount::getAccountNumber).orElse("계좌 정보 없음");
-                    String bankName = vaOptional.map(VirtualAccount::getBankName).orElse("은행 정보 없음"); // ⬅️ 추가됨!
+                    String bankName = vaOptional.map(VirtualAccount::getBankName).orElse("은행 정보 없음");
 
-                    System.out.println("결제ID: " + p.getId() + " / 은행: " + bankName + " / 계좌: " + accountNum);
-
-                    // 3. 응답 DTO 빌더에 bankName 추가
                     return PaymentResponse.builder()
                             .payUuid(p.getPayUuid())
                             .productName(p.getProductName())
                             .depositedAmount(p.getTotalAmount())
                             .status(p.getStatus())
                             .maskedAccount(accountNum)
-                            .bankName(bankName) //
+                            .bankName(bankName)
                             .message(p.getCreatedAt().toString())
                             .build();
                 })
