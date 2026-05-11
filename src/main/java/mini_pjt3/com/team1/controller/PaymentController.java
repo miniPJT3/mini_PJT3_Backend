@@ -51,7 +51,7 @@ public class PaymentController {
         return ResponseEntity.ok(history);
     }
 
-    // 🥊 판매자 대시보드용 목록 조회 (sellerId는 현재 1로 고정해서 테스트)
+    // 판매자 대시보드용 목록 조회 (sellerId는 현재 1로 고정해서 테스트)
     @GetMapping("/seller/{sellerId}/history")
     public ResponseEntity<List<PaymentResponse>> getPendingPayments(@PathVariable Long sellerId) {
         System.out.println("조회 요청된 판매자 ID: " + sellerId);
@@ -59,10 +59,10 @@ public class PaymentController {
         return ResponseEntity.ok(responses);
     }
 
-    // 🥊 판매자의 최종 입금 확인 승인 버튼 클릭 시 호출
+    // 판매자의 최종 입금 확인 승인 버튼 클릭 시 호출
     @PostMapping("/approve/{payUuid}")
     public ResponseEntity<Void> approvePayment(@PathVariable String payUuid) {
-        // 🥊 현재는 테스트를 위해 판매자 ID를 1로 고정하여 전달
+        // 현재는 테스트를 위해 판매자 ID를 1로 고정하여 전달
         paymentService.approvePayment(payUuid, 1L);
         return ResponseEntity.ok().build();
     }

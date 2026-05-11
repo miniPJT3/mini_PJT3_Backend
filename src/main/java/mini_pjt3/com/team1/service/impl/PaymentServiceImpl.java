@@ -69,7 +69,7 @@ public class PaymentServiceImpl implements PaymentService {
         va.completePayment();
 
         // 최종 상태 변경
-        payment.updateStatus(TransactionStatus.PAID); // 또는 COMPLETED (지호님 선택)
+        payment.updateStatus(TransactionStatus.PAID);
 
         // 이력 저장
         PaymentHistory history = PaymentHistory.builder()
@@ -81,7 +81,7 @@ public class PaymentServiceImpl implements PaymentService {
         paymentHistoryRepository.save(history);
     }
 
-    // 3. [보고] 구매자가 "입금했어요" 클릭
+    // 3. 구매자가 "입금했어요" 클릭
     @Override
     public PaymentResponse reportDeposit(String payUuid) {
         Payment payment = paymentRepository.findByPayUuid(payUuid)
@@ -102,8 +102,7 @@ public class PaymentServiceImpl implements PaymentService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
-        // 2. 상품 조회 (DTO에 productId가 있다고 가정)
-        // 만약 DTO에 productId가 없다면 추가해주셔야 합니다!
+        // 2. 상품 조회
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품입니다."));
 
