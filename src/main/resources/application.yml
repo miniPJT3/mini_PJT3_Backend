@@ -9,47 +9,33 @@ spring:
   application:
     name: SafePay-Vault
 
-  # 1. Database 설정 (H2 인메모리 사용 - 로컬 개발용)
+  # Database 설정 (AWS RDS MySQL)
   datasource:
-    # JDBC URL: 인메모리 모드로 설정
-    url: jdbc:h2:mem:testdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: 
+    url: jdbc:mysql://terraform-20260508075842560200000001.c18y4gs8uo61.ap-northeast-2.rds.amazonaws.com:3306/mydb?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: admin
+    password: ${RDS_PASSWORD:mysql1234}
 
-  # 2. H2 콘솔 설정 (브라우저에서 DB 확인 가능)
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
-  # 3. JPA 및 Hibernate 설정
+  # JPA 및 Hibernate 설정
   jpa:
-    # H2 전용 Dialect 설정
-    database-platform: org.hibernate.dialect.H2Dialect
-    # [해결책] 테이블 생성 순서 꼬임을 방지하기 위해 초기 실행 시 create 사용 추천
+    database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
-      ddl-auto: create 
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-    # [해결책] 스키마 생성 후 데이터 초기화를 진행하도록 설정 (중요)
+        dialect: org.hibernate.dialect.MySQLDialect
     defer-datasource-initialization: true
     open-in-view: false
 
-  # [추가] SQL 초기화 설정 (data.sql 사용 시)
-  sql:
-    init:
-      mode: always
-
-  # 4. Redis 설정 (토큰 및 계좌 TTL 관리용)
+  # Redis 설정 (JWT Refresh Token 및 캐시용)
   data:
     redis:
       host: localhost
       port: 6379
 
-  # 5. OAuth2 설정 (구글 로그인)
+  #  OAuth2 설정 (구글 소셜 로그인)
   security:
     oauth2:
       client:
@@ -57,18 +43,28 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
+            # 구글 로그인 후 돌아올 백엔드 경로
+            redirect-uri: "{baseUrl}/login/oauth2/code/google"
             scope:
               - email
               - profile
 
-# 6. JWT 커스텀 설정
+  # SQL 초기화 모드
+  sql:
+    init:
+      mode: never
+
+#  JWT 커스텀 설정
 jwt:
-  secret: ${JWT_SECRET_KEY:your_default_secret_key_at_least_32_characters_long}
-  access-token-expiration: 3600000 # 1시간 (ms)
-  refresh-token-expiration: 604800000 # 7일 (ms)
+  # 보안을 위해 실제 운영 환경에서는 환경 변수를 사용
+  secret: ${JWT_SECRET_KEY:your_default_secret_key_at_least_32_characters_long_for_security}
+  access-token-expiration: 3600000 # 1시간
+  refresh-token-expiration: 604800000 # 7일
 
 # 로그 레벨 설정
 logging:
   level:
     org.springframework.security: DEBUG
     mini_pjt3.com.team1: DEBUG
+    # 쿼리 파라미터 로그 확인용
+    org.hibernate.type.descriptor.sql: TRACE
