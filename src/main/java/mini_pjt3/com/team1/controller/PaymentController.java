@@ -27,7 +27,7 @@ public class PaymentController {
 
         // 현재는 테스트를 위해 memberId를 1L로 고정하여 진행합니다.
         // 추후 인증 로직(세션 등)이 추가되면 변경 가능합니다.
-        Long memberId = 1L;
+        Long memberId = 2L;
 
         PaymentResponse response = paymentService.issueVirtualAccount(memberId, request);
         return ResponseEntity.ok(response);
@@ -42,7 +42,7 @@ public class PaymentController {
         // Long currentMemberId = SecurityUtil.getCurrentMemberId();
 
         // 2. 지금은 테스트 단계이므로 데이터가 들어간 1번 멤버의 내역을 가져오도록 고정합니다.
-        Long testMemberId = 1L;
+        Long testMemberId = 2L;
 
         List<PaymentResponse> history = paymentService.getMyHistory(testMemberId);
 

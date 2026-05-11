@@ -1,7 +1,9 @@
 package mini_pjt3.com.team1.service;
 
 import mini_pjt3.com.team1.dto.request.PaymentRequest;
+import mini_pjt3.com.team1.dto.request.SimulationRequest;
 import mini_pjt3.com.team1.dto.response.PaymentResponse;
+import mini_pjt3.com.team1.dto.response.SimulationResponse;
 
 import java.util.List;
 
@@ -20,4 +22,6 @@ public interface PaymentService {
     PaymentResponse issueVirtualAccount(Long memberId, PaymentRequest dto);
 
     List<PaymentResponse> getMyHistory(Long memberId);
+
+    SimulationResponse checkSimulationLogic(SimulationRequest request);
 }
