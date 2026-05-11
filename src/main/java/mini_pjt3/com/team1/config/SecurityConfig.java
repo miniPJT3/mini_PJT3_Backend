@@ -44,7 +44,7 @@ public class SecurityConfig {
             // URL별 권한 설정
             .authorizeHttpRequests(auth -> auth
                 // "/", 로그인, OAuth2 관련 경로와 "일반 회원가입(/api/auth/**)" 경로를 허용합니다.
-                .requestMatchers("/", "/login/**", "/oauth2/**", "/api/auth/**").permitAll()
+                .requestMatchers("/", "/login/**", "/oauth2/**", "/api/auth/**", "/api/dashboard/**", "/api/admin/**", "/api/payments/**", "/api/products/**").permitAll()
                 // H2 콘솔을 사용하면 아래 주석을 해제
                 // .requestMatchers("/h2-console/**").permitAll()
                 .anyRequest().authenticated() // 나머지는 인증 필요
