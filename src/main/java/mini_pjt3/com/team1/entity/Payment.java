@@ -29,6 +29,7 @@ public class Payment extends BaseEntity {
     private String productName;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20)
     private TransactionStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)

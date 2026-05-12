@@ -5,9 +5,9 @@ import lombok.RequiredArgsConstructor;
 import mini_pjt3.com.team1.dto.request.PaymentRequest;
 import mini_pjt3.com.team1.dto.response.PaymentResponse;
 import mini_pjt3.com.team1.service.PaymentService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,32 +21,33 @@ public class PaymentController {
 
     /**
      * 가상계좌 발급 요청
-     * POST /api/payments/issue
      */
     @PostMapping("/issue")
-    public ResponseEntity<PaymentResponse> issueAccount(
+    public ResponseEntity<?> issueAccount(
             @RequestBody PaymentRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal String email // 🥊 String 유지
+    ) {
+        if (email == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증 정보가 없습니다.");
+        }
 
-        // extractIdFromPrincipal 대신 서비스에 '아이디'를 넘겨서 처리
-        String loginId = userDetails.getUsername();
-        PaymentResponse response = paymentService.issueByLoginId(loginId, request);
-
+        PaymentResponse response = paymentService.issueByEmail(email, request);
         return ResponseEntity.ok(response);
     }
 
     /**
      * 내 결제 내역 조회 API (구매자용)
      */
+    // PaymentController.java
+
     @GetMapping("/history")
-    public ResponseEntity<List<PaymentResponse>> getMyPaymentHistory(
-            @AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<?> getMyPaymentHistory(@AuthenticationPrincipal String email) {
+        if (email == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("인증 정보가 없습니다.");
+        }
 
-        // 세션에서 로그인 아이디 추출
-        String loginId = userDetails.getUsername();
-
-        // 서비스에 loginId를 넘겨서 본인의 내역만 가져오게 함
-        List<PaymentResponse> history = paymentService.getMyHistoryByLoginId(loginId);
+        // 🥊 바뀐 메서드명으로 호출!
+        List<PaymentResponse> history = paymentService.getMyHistoryByEmail(email);
 
         return ResponseEntity.ok(history);
     }
@@ -54,7 +55,7 @@ public class PaymentController {
     /**
      * 판매자 대시보드용 목록 조회 (판매자 ID: 10 고정)
      */
-    @GetMapping("/seller/history") // 경로에서 {sellerId} 제거
+    @GetMapping("/seller/history")
     public ResponseEntity<List<PaymentResponse>> getPendingPayments() {
         Long fixedSellerId = 10L;
         System.out.println("판매자 대시보드 조회 요청 (ID: 10)");
@@ -68,7 +69,6 @@ public class PaymentController {
      */
     @PostMapping("/approve/{payUuid}")
     public ResponseEntity<Void> approvePayment(@PathVariable String payUuid) {
-        // 판매자 ID를 10으로 고정하여 전달
         paymentService.approvePayment(payUuid, 10L);
         return ResponseEntity.ok().build();
     }

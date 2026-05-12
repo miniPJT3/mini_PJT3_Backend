@@ -158,15 +158,13 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PaymentResponse> getMyHistoryByLoginId(String loginId) {
-        // 1. login_id로 멤버를 먼저 찾습니다.
-        Member member = memberRepository.findByLoginId(loginId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+    public List<PaymentResponse> getMyHistoryByEmail(String email) { // 메서드명 변경
+        // findByEmail을 사용하여 확실하게 이메일로 검색
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. 이메일: " + email));
 
-        // 2. 찾은 멤버의 ID로 결제 내역을 가져옵니다.
         List<Payment> payments = paymentRepository.findAllByMemberId(member.getId());
 
-        // 3. DTO 변환 로직
         return payments.stream()
                 .map(p -> {
                     Optional<VirtualAccount> vaOptional = virtualAccountRepository.findByPaymentId(p.getId());
@@ -225,6 +223,17 @@ public class PaymentServiceImpl implements PaymentService {
                         .status("FAIL")
                         .message("존재하지 않는 가상계좌 번호입니다.")
                         .build());
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponse issueByEmail(String email, PaymentRequest dto) {
+        // 1. 토큰에서 추출한 email을 사용하여 DB에서 Member를 찾습니다.
+        Member member = memberRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다. 이메일: " + email));
+
+        // 2. 찾은 멤버의 PK(id)를 사용하여 기존 로직(issueVirtualAccount)을 호출합니다.
+        return issueVirtualAccount(member.getId(), dto);
     }
 
 }
