@@ -1,0 +1,63 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - feat/infra
+    paths:
+      - "src/**"
+      - "pom.xml"      # Gradle 대신 Maven 설정 파일 감시
+      - "Dockerfile"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Application Code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # 1. 이미지 빌드 및 ECR 푸시 (제공해주신 URL 직접 사용)
+      - name: Build, Tag, and Push image to ECR
+        env:
+          ECR_URL: 805400277714.dkr.ecr.ap-northeast-2.amazonaws.com/team01-mini-project3/backend
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # 제공해주신 멀티스테이지 Dockerfile을 사용하여 빌드
+          docker build -t $ECR_URL:$IMAGE_TAG .
+          docker push $ECR_URL:$IMAGE_TAG
+
+      # 2. 인프라 리포지토리(mini_PJT3_Infra) 체크아웃
+      - name: Checkout Infra Repo
+        uses: actions/checkout@v3
+        with:
+          repository: miniPJT3/mini_PJT3_Infra
+          token: ${{ secrets.GH_TOKEN }} # 인프라 리포 푸시 권한이 있는 PAT
+          path: infra-repo
+
+      # 3. ArgoCD 매니페스트 업데이트 (GitOps)
+      - name: Update Kubernetes Manifest
+        env:
+          ECR_URL: 805400277714.dkr.ecr.ap-northeast-2.amazonaws.com/team01-mini-project3/backend
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd infra-repo
+          # manifests/backend-deployment.yaml 파일 내의 image 태그를 업데이트
+          sed -i "s|image: .*team01-mini-project3/backend:.*|image: $ECR_URL:$IMAGE_TAG|g" manifests/backend-deployment.yaml
+          
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "github-actions"
+          git add manifests/backend-deployment.yaml
+          git commit -m "chore: update backend image to $IMAGE_TAG"
+          git push origin main
