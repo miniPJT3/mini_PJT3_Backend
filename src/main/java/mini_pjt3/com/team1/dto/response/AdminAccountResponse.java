@@ -19,7 +19,7 @@ public record AdminAccountResponse(
         return new AdminAccountResponse(
                 member.getId(),
                 member.getEmail(),
-                member.getUsername(),
+                member.getLoginId(),
                 member.getName(),
                 member.getProvider(),
                 member.getRole(),
