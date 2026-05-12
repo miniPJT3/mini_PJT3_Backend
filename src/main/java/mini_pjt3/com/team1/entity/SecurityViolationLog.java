@@ -1,9 +1,15 @@
 package mini_pjt3.com.team1.entity;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import mini_pjt3.com.team1.enums.ViolationType;
 
 @Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA를 위한 기본 생성자
 @Table(
         name = "security_violation_logs",
         indexes = {
@@ -40,9 +46,8 @@ public class SecurityViolationLog extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String message;
 
-    protected SecurityViolationLog() {
-    }
-
+    // 빌더 패턴 적용
+    @Builder
     private SecurityViolationLog(
             String ipAddress,
             String requestMethod,
@@ -61,6 +66,7 @@ public class SecurityViolationLog extends BaseEntity {
         this.message = message;
     }
 
+    // 정적 팩토리 메서드 유지 (기존 코드와의 호환성)
     public static SecurityViolationLog of(
             String ipAddress,
             String requestMethod,
@@ -70,46 +76,14 @@ public class SecurityViolationLog extends BaseEntity {
             String userAgent,
             String message
     ) {
-        return new SecurityViolationLog(
-                ipAddress,
-                requestMethod,
-                requestPath,
-                statusCode,
-                violationType,
-                userAgent,
-                message
-        );
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getIpAddress() {
-        return ipAddress;
-    }
-
-    public String getRequestMethod() {
-        return requestMethod;
-    }
-
-    public String getRequestPath() {
-        return requestPath;
-    }
-
-    public int getStatusCode() {
-        return statusCode;
-    }
-
-    public ViolationType getViolationType() {
-        return violationType;
-    }
-
-    public String getUserAgent() {
-        return userAgent;
-    }
-
-    public String getMessage() {
-        return message;
+        return SecurityViolationLog.builder()
+                .ipAddress(ipAddress)
+                .requestMethod(requestMethod)
+                .requestPath(requestPath)
+                .statusCode(statusCode)
+                .violationType(violationType)
+                .userAgent(userAgent)
+                .message(message)
+                .build();
     }
 }

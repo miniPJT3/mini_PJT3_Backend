@@ -10,22 +10,22 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
 
+    // 같은 config 패키지에 있으므로 import가 필요 없습니다.
     private final SecurityLogInterceptor securityLogInterceptor;
 
     /**
      * 프론트엔드(React) 서버의 접속을 허용하는 CORS 설정입니다.
-     */
+     
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOriginPatterns("http://localhost:5173") // allowedOrigins보다 유연한 패턴 사용 가능
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
-                .allowedHeaders("*")
-                // SSE 통신 시 클라이언트가 읽어야 할 헤더를 명시적으로 노출
-                .exposedHeaders("Content-Type", "Cache-Control", "Connection") 
-                .allowCredentials(true)
-                .maxAge(3600);
+        registry.addMapping("/**") // 모든 경로에 대해
+                .allowedOrigins("http://localhost:5173") // 프론트엔드 주소 허용
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // 허용할 HTTP 메서드
+                .allowedHeaders("*") // 모든 헤더 허용
+                .allowCredentials(true) // 쿠키/인증 정보 포함 허용
+                .maxAge(3600); // 프리플라이트 요청 캐싱 시간
     }
+    */
 
     /**
      * 작성한 보안 로그 인터셉터를 등록합니다.
@@ -34,14 +34,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(securityLogInterceptor)
                 .addPathPatterns("/**") 
-                // SSE 연결 요청과 정적 리소스를 제외하여 실시간 스트림 끊김을 방지합니다.
-                .excludePathPatterns(
-                    "/api/sse/**", 
-                    "/assets/**", 
-                    "/css/**", 
-                    "/js/**", 
-                    "/favicon.ico",
-                    "/error"
-                ); 
+                // SSE 연결 및 정적 리소스는 인터셉터 검사에서 제외합니다.
+                .excludePathPatterns("/api/sse/**", "/assets/**", "/css/**", "/js/**"); 
     }
 }

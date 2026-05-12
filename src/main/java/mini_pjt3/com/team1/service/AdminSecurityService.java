@@ -211,14 +211,14 @@ public class AdminSecurityService {
 
     private ViolationType resolveViolationType(int statusCode) {
         if (statusCode == 401) {
-            return ViolationType.UNAUTHORIZED;
+            return ViolationType.UNAUTHORIZED_ACCESS;
         }
 
         if (statusCode == 403) {
-            return ViolationType.FORBIDDEN;
+            return ViolationType.FORBIDDEN_ACCESS;
         }
 
-        return ViolationType.FORBIDDEN;
+        return ViolationType.FORBIDDEN_ACCESS;
     }
 
     private void detectRepeatedIpAccess(String ipAddress) {
