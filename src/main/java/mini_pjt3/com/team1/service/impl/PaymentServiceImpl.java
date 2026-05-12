@@ -166,6 +166,7 @@ public class PaymentServiceImpl implements PaymentService {
         // 상태 검증: DEPOSITED 상태일 경우에만 PAID로 변경
         if (payment.getStatus() == TransactionStatus.DEPOSITED) {
             payment.setStatus(TransactionStatus.PAID);
+            payment.setPaidAt(LocalDateTime.now());
         } else {
             // DEPOSITED 상태가 아니면 오류 발생
             throw new IllegalStateException("결제 승인은 DEPOSITED 상태에서만 가능합니다. 현재 상태: " + payment.getStatus());
@@ -210,24 +211,33 @@ public class PaymentServiceImpl implements PaymentService {
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품입니다."));
 
-        // 3. 결제 정보 생성
+        // 3. 가상계좌 생성 로직
+        BankCode[] allBanks = BankCode.values();
+        BankCode randomBank = allBanks[(int)(Math.random() * allBanks.length)];
+        String generatedNumber = randomBank.getCode() + "-" + ((long)(Math.random() * 900_000_000L) + 100_000_000L);
+        
+        String maskedAccount =
+                generatedNumber.split("-")[0]
+                + "-*****"
+                + generatedNumber.substring(generatedNumber.length() - 4);
+
+        // 4. 결제 정보 생성
         Payment payment = Payment.builder()
                 .productName(product.getName())
                 .totalAmount(dto.getDepositedAmount())
                 .member(member)
                 .product(product)
                 .status(TransactionStatus.PENDING) // Initial status
+                .bankName(randomBank.getName())
+                .maskedAccount(maskedAccount)
                 .build();
 
         paymentRepository.save(payment);
 
-        // 4. 가상계좌 생성 로직
-        BankCode[] allBanks = BankCode.values();
-        BankCode randomBank = allBanks[(int)(Math.random() * allBanks.length)];
-        String generatedNumber = randomBank.getCode() + "-" + ((long)(Math.random() * 900_000_000L) + 100_000_000L);
 
         VirtualAccount vAccount = VirtualAccount.builder()
                 .accountNumber(generatedNumber)
+                .maskedAccountNumber(maskedAccount)
                 .bankName(randomBank.getName())
                 .bankCode(randomBank)
                 .payment(payment)
@@ -258,7 +268,8 @@ public class PaymentServiceImpl implements PaymentService {
 
                     // 2. 계좌번호와 은행명을 안전하게 추출
                     String accountNum = vaOptional.map(VirtualAccount::getAccountNumber).orElse("계좌 정보 없음");
-                    String bankName = vaOptional.map(VirtualAccount::getBankName).orElse("은행 정보 없음"); // ⬅️ 추가됨!
+                    String bankName = vaOptional.map(VirtualAccount::getBankName).orElse("은행 정보 없음");
+                    LocalDateTime expiredAt = vaOptional.map(VirtualAccount::getExpiredAt).orElse(null);
 
                     System.out.println("결제ID: " + p.getId() + " / 은행: " + bankName + " / 계좌: " + accountNum);
 
@@ -268,8 +279,15 @@ public class PaymentServiceImpl implements PaymentService {
                             .productName(p.getProductName())
                             .depositedAmount(p.getTotalAmount())
                             .status(p.getStatus())
-                            .maskedAccount(accountNum)
-                            .bankName(bankName) //
+                            .maskedAccount(
+                                        accountNum != null && accountNum.contains("-")
+                                                ? accountNum.split("-")[0]
+                                                + "-*****"
+                                                + accountNum.substring(accountNum.length() - 4)
+                                                : "계좌 정보 없음"
+                                )
+                            .bankName(bankName)
+                            .expiredAt(expiredAt)
                             .message(p.getCreatedAt().toString())
                             .build();
                 })
