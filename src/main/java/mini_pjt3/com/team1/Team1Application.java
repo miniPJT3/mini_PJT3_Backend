@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.context.annotation.Bean;
 
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
-
+//확인용 주석
 @EnableJpaAuditing
 @SpringBootApplication
 @EnableScheduling
