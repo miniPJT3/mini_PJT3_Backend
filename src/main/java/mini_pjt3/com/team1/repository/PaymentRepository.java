@@ -26,4 +26,14 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     long countByStatusAndCreatedAtAfter(TransactionStatus status, LocalDateTime createdAt);
 
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            LocalDateTime start,
+            LocalDateTime end
+    );
+
+    long countByStatusAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+            TransactionStatus status,
+            LocalDateTime start,
+            LocalDateTime end
+    );
 }
