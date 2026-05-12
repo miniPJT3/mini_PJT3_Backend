@@ -2,6 +2,7 @@ package mini_pjt3.com.team1.dto.response;
 
 import lombok.*;
 import mini_pjt3.com.team1.entity.Payment; // Import Payment entity
+import mini_pjt3.com.team1.entity.VirtualAccount;
 import mini_pjt3.com.team1.enums.TransactionStatus;
 
 import java.time.LocalDateTime;
@@ -23,6 +24,7 @@ public class PaymentResponse {
     private java.time.LocalDateTime createdAt;
     private String bankName;
     private String message;          // 응답 메시지 (예: "결제가 성공적으로 완료되었습니다.")
+    private LocalDateTime expiredAt;
 
     // 성공 응답 정적 팩토리 메서드
     public static PaymentResponse success(String payUuid, Long amount, String maskedAccount) {
@@ -38,13 +40,32 @@ public class PaymentResponse {
 
     // Payment 엔티티로부터 PaymentResponse를 생성하는 팩토리 메서드
     public static PaymentResponse from(Payment payment) {
+
+        VirtualAccount va = payment.getVirtualAccount();
+
         return PaymentResponse.builder()
                 .payUuid(payment.getPayUuid())
                 .status(payment.getStatus())
                 .depositedAmount(payment.getTotalAmount()) // Assuming depositedAmount can be totalAmount initially
                 .productName(payment.getProductName())
                 .totalAmount(payment.getTotalAmount())
+                .bankName(
+                    va != null ? va.getBankName() : null
+            )
+
+            .maskedAccount(
+                    va != null ? va.getMaskedAccountNumber() : null
+            )
+                .paidAt(payment.getPaidAt())
+                .memberName(
+                        payment.getMember() != null
+                                ? payment.getMember().getUsername()
+                                : null
+                )
                 .createdAt(payment.getCreatedAt())
+                .expiredAt(
+                    va != null ? va.getExpiredAt() : null
+                )
                 .build();
     }
 }
