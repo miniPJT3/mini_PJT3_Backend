@@ -6,23 +6,26 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtUtil {
 
-    
     @Value("${jwt.secret:your-very-long-and-secret-key-that-should-be-at-least-32-characters}")
     private String secretKey;
 
     private Key key;
-    private final long tokenExpiration = 3600000L; // 1시간 (밀리초 단위)
+    private final long tokenExpiration = 3600000L; // 1시간
 
     @PostConstruct
     public void init() {
@@ -33,20 +36,25 @@ public class JwtUtil {
         String email;
         String name = "";
 
-        // 1. 구글 로그인(OAuth2User)인 경우 처리
+        // 1. [핵심] 권한 정보 추출 (ROLE_USER, ROLE_ADMIN 등을 문자열로 변환)
+        String authorities = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.joining(","));
+
+        // 2. 구글 로그인(OAuth2User)인 경우 처리
         if (authentication.getPrincipal() instanceof OAuth2User oAuth2User) {
             email = oAuth2User.getAttribute("email");
             name = oAuth2User.getAttribute("name");
         }
-        // 2. 일반 로그인(UsernamePasswordAuthenticationToken)인 경우 처리
+        // 3. 일반 로그인인 경우 처리
         else {
-            email = authentication.getName(); // 우리가 AuthController에서 넘겨준 이메일
-            // 일반 로그인 시에는 이름이 없을 수 있으므로 이메일을 이름 대용으로 쓰거나 빈 값 처리
+            email = authentication.getName();
             name = email.split("@")[0];
         }
 
         Claims claims = Jwts.claims().setSubject(email);
         claims.put("name", name);
+        claims.put("auth", authorities); // 🥊 [중요] 토큰에 권한 정보 저장
 
         Date now = new Date();
         return Jwts.builder()
@@ -57,7 +65,7 @@ public class JwtUtil {
                 .compact();
     }
 
-    //토큰 유효성 검증
+    // 토큰 유효성 검증
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
@@ -74,16 +82,35 @@ public class JwtUtil {
         return false;
     }
 
-    //토큰에서 사용자 이메일 추출
+    // 토큰에서 사용자 이메일 추출
     public String getEmail(String token) {
         return Jwts.parserBuilder().setSigningKey(key).build()
                 .parseClaimsJws(token).getBody().getSubject();
     }
 
+    /**
+     * 🥊 [핵심 수정] 토큰에서 권한 정보를 꺼내서 Authentication 객체 생성
+     */
     public Authentication getAuthentication(String token) {
-        String email = getEmail(token);
-        // 별도의 UserDetails 서비스가 없다면 우선 기본 정보로 생성
-        // 만약 DB에서 권한을 가져와야 한다면 이 부분을 수정해야 함
-        return new UsernamePasswordAuthenticationToken(email, "", Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+        Claims claims = Jwts.parserBuilder().setSigningKey(key).build()
+                .parseClaimsJws(token).getBody();
+
+        // 1. 토큰에서 "auth" 클레임 꺼내기
+        Object authClaim = claims.get("auth");
+
+        Collection<? extends GrantedAuthority> authorities;
+
+        if (authClaim != null && !authClaim.toString().isEmpty()) {
+            // "ROLE_USER,ROLE_ADMIN" -> List 생성
+            authorities = Arrays.stream(authClaim.toString().split(","))
+                    .map(SimpleGrantedAuthority::new)
+                    .collect(Collectors.toList());
+        } else {
+            // 권한 정보가 없으면 기본 ROLE_USER 부여
+            authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+        }
+
+        // 2. 이제 하드코딩된 ROLE_USER가 아니라 실제 권한을 담은 신분증 반환
+        return new UsernamePasswordAuthenticationToken(claims.getSubject(), "", authorities);
     }
 }
