@@ -126,7 +126,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
           AND p.status = 'PAID'
           AND DATE(p.updated_at) BETWEEN :startDate AND :endDate
         GROUP BY p.product_name
-        ORDER BY amount DESC, payment_count DESC
+        ORDER BY payment_count DESC, amount DESC
         LIMIT 5
     """, nativeQuery = true)
     List<Object[]> findTopPaidProductRowsBySellerIdAndUpdatedAtBetween(
