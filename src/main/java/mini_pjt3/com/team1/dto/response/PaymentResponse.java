@@ -41,8 +41,8 @@ public class PaymentResponse {
                 // 🥊 프론트에서 금액을 찾을 때 depositedAmount도 함께 보게 함
                 .depositedAmount(payment.getTotalAmount())
                 .bankName(va != null ? va.getBankName() : "계좌 정보 없음")
-                .maskedAccount(va != null ? va.getMaskedAccountNumber() : "계좌 정보 없음")
-                .memberName(payment.getMember() != null ? payment.getMember().getName() : "알 수 없음")
+                .maskedAccount(va != null ? maskAccountNumber(va.getAccountNumber()) : "계좌 정보 없음")
+                .memberName(payment.getMember() != null ? maskName(payment.getMember().getName()) : "알 수 없음")
                 .paidAt(payment.getPaidAt())
                 .createdAt(payment.getCreatedAt())
                 .expiredAt(va != null ? va.getExpiredAt() : null)
@@ -62,5 +62,57 @@ public class PaymentResponse {
                 .paidAt(LocalDateTime.now())
                 .message("입금 확인 및 결제 처리가 완료되었습니다.")
                 .build();
+    }
+    private static String maskName(String name) {
+        if (name == null || name.isBlank()) {
+            return "알 수 없음";
+        }
+
+        int length = name.length();
+
+        if (length == 1) {
+            return "*";
+        }
+
+        if (length == 2) {
+            return name.charAt(0) + "*";
+        }
+
+        return name.charAt(0)
+                + "*".repeat(length - 2)
+                + name.charAt(length - 1);
+    }
+
+    private static String maskAccountNumber(String accountNumber) {
+        if (accountNumber == null || accountNumber.isBlank()) {
+            return "계좌 정보 없음";
+        }
+
+        if (accountNumber.contains("-")) {
+            String[] parts = accountNumber.split("-", 2);
+            String prefix = parts[0];
+            String number = parts[1];
+
+            if (number.length() <= 4) {
+                return prefix + "-****";
+            }
+
+            return prefix + "-"
+                    + "*".repeat(number.length() - 4)
+                    + number.substring(number.length() - 4);
+        }
+
+        if (accountNumber.startsWith("VA") && accountNumber.length() > 6) {
+            return accountNumber.substring(0, 2)
+                    + "*".repeat(accountNumber.length() - 6)
+                    + accountNumber.substring(accountNumber.length() - 4);
+        }
+
+        if (accountNumber.length() <= 4) {
+            return "****";
+        }
+
+        return "*".repeat(accountNumber.length() - 4)
+                + accountNumber.substring(accountNumber.length() - 4);
     }
 }
