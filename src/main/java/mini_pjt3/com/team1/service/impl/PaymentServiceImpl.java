@@ -140,7 +140,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .status(payment.getStatus())
                 .bankName(randomBank.getName())
                 .depositedAmount(payment.getTotalAmount())
-                .maskedAccount(maskAccountNumber(vAccount.getAccountNumber()))
+                .maskedAccount(vAccount.getAccountNumber())
                 .message("가상계좌가 발급되었습니다.")
                 .build();
     }
