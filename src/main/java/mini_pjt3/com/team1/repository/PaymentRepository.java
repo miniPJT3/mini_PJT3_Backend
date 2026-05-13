@@ -36,4 +36,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             LocalDateTime start,
             LocalDateTime end
     );
+
+    // 특정 기간(오늘) 내 전체 주문 수 조회
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    // 특정 기간 내 특정 상태(PAID, FAILED)인 주문 수 조회
+    long countByStatusAndCreatedAtBetween(TransactionStatus status, LocalDateTime start, LocalDateTime end);
 }

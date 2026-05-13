@@ -33,4 +33,7 @@ public interface VirtualAccountRepository extends JpaRepository<VirtualAccount, 
             WHERE p.status = :status
             """)
     List<VirtualAccount> findAllByPaymentStatusForAudit(@Param("status") TransactionStatus status);
+
+    // 상태가 ACTIVE인 계좌 수 조회
+    long countByStatus(AccountStatus status);
 }
