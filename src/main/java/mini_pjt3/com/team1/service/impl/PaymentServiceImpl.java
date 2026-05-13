@@ -171,30 +171,32 @@ public class PaymentServiceImpl implements PaymentService {
                     // 3. 결제건에 연결된 가상계좌 정보를 찾습니다.
                     Optional<VirtualAccount> vaOptional = virtualAccountRepository.findByPaymentId(p.getId());
 
-                    // 4. 계좌 정보 파싱 (만료시간 포함)
-                    String accountNum = vaOptional.map(VirtualAccount::getAccountNumber).orElse(null);
-                    String bankName = vaOptional.map(VirtualAccount::getBankName).orElse("은행 정보 없음");
-                    LocalDateTime expiredAt = vaOptional.map(VirtualAccount::getExpiredAt).orElse(null);
+                // 4. 계좌 정보 파싱 (만료시간 포함)
+                String accountNum = vaOptional.map(VirtualAccount::getAccountNumber).orElse(null);
+                String bankName = vaOptional.map(VirtualAccount::getBankName).orElse("은행 정보 없음");
+                LocalDateTime expiredAt = vaOptional.map(VirtualAccount::getExpiredAt).orElse(null);
 
-                    // 5. 계좌번호 마스킹 처리 로직 추가 (032-6435... -> 032-*****7029)
-                    String maskedAccount = maskAccountNumber(accountNum);
+                // 5. 사용자 본인 결제이력 조회이므로 계좌번호 원본 노출
+                String displayAccount = accountNum != null ? accountNum : "계좌 정보 없음";
 
-                    // 디버깅용 로그 (필요 없으면 삭제하세요)
-                    System.out.println("조회 로그 -> 결제ID: " + p.getId() + " / 은행: " + bankName + " / 마스킹계좌: " + maskedAccount);
+                // 디버깅용 로그 (필요 없으면 삭제하세요)
+                System.out.println("조회 로그 -> 결제ID: " + p.getId()
+                        + " / 은행: " + bankName
+                        + " / 계좌: " + displayAccount);
 
-                    // 6. 합쳐진 최종 빌더 응답
-                    return PaymentResponse.builder()
-                            .payUuid(p.getPayUuid())
-                            .productName(p.getProductName())
-                            .totalAmount(p.getTotalAmount()) // DTO 필드명에 맞춰 totalAmount 사용
-                            .depositedAmount(p.getTotalAmount()) // 프론트 호환용
-                            .status(p.getStatus())
-                            .maskedAccount(maskedAccount)
-                            .bankName(bankName)
-                            .expiredAt(expiredAt) // 추가된 로직: 만료 시간
-                            .createdAt(p.getCreatedAt())
-                            .message(p.getCreatedAt().toString()) // 기존 유지
-                            .build();
+                // 6. 합쳐진 최종 빌더 응답
+                return PaymentResponse.builder()
+                        .payUuid(p.getPayUuid())
+                        .productName(p.getProductName())
+                        .totalAmount(p.getTotalAmount())
+                        .depositedAmount(p.getTotalAmount())
+                        .status(p.getStatus())
+                        .maskedAccount(displayAccount)
+                        .bankName(bankName)
+                        .expiredAt(expiredAt)
+                        .createdAt(p.getCreatedAt())
+                        .message(p.getCreatedAt().toString())
+                        .build();
                 })
                 .toList();
     }
