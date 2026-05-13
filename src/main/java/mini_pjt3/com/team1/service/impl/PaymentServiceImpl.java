@@ -45,7 +45,7 @@ public class PaymentServiceImpl implements PaymentService {
                         .productName(p.getProductName())
                         .totalAmount(p.getTotalAmount())
                         .status(p.getStatus())
-                        .memberName(p.getMember().getName())
+                        .memberName(maskName(p.getMember().getName()))
                         .createdAt(p.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
@@ -177,12 +177,7 @@ public class PaymentServiceImpl implements PaymentService {
                     LocalDateTime expiredAt = vaOptional.map(VirtualAccount::getExpiredAt).orElse(null);
 
                     // 5. 계좌번호 마스킹 처리 로직 추가 (032-6435... -> 032-*****7029)
-                    String maskedAccount = "계좌 정보 없음";
-                    if (accountNum != null && accountNum.contains("-")) {
-                        maskedAccount = accountNum.split("-")[0]
-                                + "-*****"
-                                + accountNum.substring(Math.max(0, accountNum.length() - 4));
-                    }
+                    String maskedAccount = maskAccountNumber(accountNum);
 
                     // 디버깅용 로그 (필요 없으면 삭제하세요)
                     System.out.println("조회 로그 -> 결제ID: " + p.getId() + " / 은행: " + bankName + " / 마스킹계좌: " + maskedAccount);
@@ -255,5 +250,58 @@ public class PaymentServiceImpl implements PaymentService {
         // 2. 찾은 멤버의 PK(id)를 사용하여 기존 로직(issueVirtualAccount)을 호출합니다.
         return issueVirtualAccount(member.getId(), dto);
     }
+    private String maskName(String name) {
+        if (name == null || name.isBlank()) {
+                return "알 수 없음";
+        }
 
+        int length = name.length();
+
+        if (length == 1) {
+                return "*";
+        }
+
+        if (length == 2) {
+                return name.charAt(0) + "*";
+        }
+
+        return name.charAt(0)
+                + "*".repeat(length - 2)
+                + name.charAt(length - 1);
+        }
+
+        private String maskAccountNumber(String accountNumber) {
+        if (accountNumber == null || accountNumber.isBlank()) {
+                return "계좌 정보 없음";
+        }
+
+        // 예: 032-123456789 -> 032-*****6789
+        if (accountNumber.contains("-")) {
+                String[] parts = accountNumber.split("-", 2);
+                String prefix = parts[0];
+                String number = parts[1];
+
+                if (number.length() <= 4) {
+                return prefix + "-****";
+                }
+
+                return prefix + "-"
+                        + "*".repeat(number.length() - 4)
+                        + number.substring(number.length() - 4);
+        }
+
+        // 예: VA1778223800141 -> VA*********0141
+        if (accountNumber.startsWith("VA") && accountNumber.length() > 6) {
+                return accountNumber.substring(0, 2)
+                        + "*".repeat(accountNumber.length() - 6)
+                        + accountNumber.substring(accountNumber.length() - 4);
+        }
+
+        if (accountNumber.length() <= 4) {
+                return "****";
+        }
+
+        return "*".repeat(accountNumber.length() - 4)
+                + accountNumber.substring(accountNumber.length() - 4);
+        }
 }
