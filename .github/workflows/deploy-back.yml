@@ -54,7 +54,7 @@ jobs:
         run: |
           cd infra-repo
           # manifests/backend-deployment.yaml 파일 내의 image 태그를 업데이트
-          sed -i "s|image: .*team01-mini-project3/backend:.*|image: $ECR_URL:$IMAGE_TAG|g" manifests/backend-deployment.yaml
+          sed -i "s|image: .*team01-mini-project3/backend:.*|image: $ECR_URL:$IMAGE_TAG|g" manifests/backend/backend-deployment.yaml
           
           git config --global user.email "github-actions@github.com"
           git config --global user.name "github-actions"

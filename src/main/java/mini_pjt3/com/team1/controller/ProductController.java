@@ -15,7 +15,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductController {
     private final ProductRepository productRepository;
-//확인용 주석
+
     @GetMapping
     public ResponseEntity<List<Product>> getProducts() {
         // DB의 상품 6개를 모두 가져와서 반환합니다.
