@@ -15,13 +15,15 @@ public interface PaymentService {
     // 판매자의 입금 확인 승인 처리 (상태 변경: DEPOSITED -> COMPLETED)
     void approvePayment(String payUuid, Long sellerId);
 
+    List<PaymentResponse> getMyHistoryByEmail(String email);
+
     // 3. 구매자 입금 보고 로직
     PaymentResponse reportDeposit(String payUuid);
 
     // 가상계좌 발급 메서드 선언
-    PaymentResponse issueVirtualAccount(Long memberId, PaymentRequest dto);
-
-    List<PaymentResponse> getMyHistory(Long memberId);
+    PaymentResponse issueByLoginId(String loginId, PaymentRequest request);
 
     SimulationResponse checkSimulationLogic(SimulationRequest request);
+
+    PaymentResponse issueByEmail(String email, PaymentRequest dto);
 }

@@ -1,9 +1,11 @@
 package mini_pjt3.com.team1.dto.response;
 
+import java.math.BigDecimal;
+
 public record ProductRankResponse(
-        Integer rank,
+        int rank,
         String productName,
-        Long salesAmount,
-        Long salesCount
+        BigDecimal amount,
+        long count
 ) {
 }
