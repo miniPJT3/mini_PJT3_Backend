@@ -11,11 +11,16 @@ import java.util.List;
 public interface SecurityViolationLogRepository extends JpaRepository<SecurityViolationLog, Long> {
     
     List<SecurityViolationLog> findAllByOrderByCreatedAtDesc();    
+
     /**
      * 실시간 보안 관제 UI용: 최신 로그 10개 조회
-     * 대시보드 초기 로딩 시 테이블에 표시될 최신 데이터 10건
      */
     List<SecurityViolationLog> findTop10ByOrderByCreatedAtDesc();
+
+    /**
+     * 프론트엔드 AdminDashboard에서 요청하는 최신 로그 20건 조회
+     */
+    List<SecurityViolationLog> findTop20ByOrderByCreatedAtDesc();
 
     /**
      * 전체 이력 조회용 (기존 Top50 유지)

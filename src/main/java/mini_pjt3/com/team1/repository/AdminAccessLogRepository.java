@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface AdminAccessLogRepository extends JpaRepository<AdminAccessLog, Long> {
 
-    List<AdminAccessLog> findTop50ByOrderByCreatedAtDesc();
+    List<AdminAccessLog> findTop20ByOrderByCreatedAtDesc();
 
     long countByCreatedAtAfter(LocalDateTime createdAt);
 }

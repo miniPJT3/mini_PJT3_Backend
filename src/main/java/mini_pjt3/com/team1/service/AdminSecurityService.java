@@ -43,27 +43,42 @@ public class AdminSecurityService {
         this.paymentRepository = paymentRepository;
     }
 
+    /**
+     * 대시보드 상단 요약 정보 (4가지 카드) 조회
+     */
     public AdminSecuritySummaryResponse getSummary() {
+        // 1. 마스킹 성공률 데이터
         long totalAuditCount = maskingAuditLogRepository.count();
         long successCount = maskingAuditLogRepository.countByResult(AuditResult.SUCCESS);
-
         double successRate = totalAuditCount == 0
                 ? 0.0
                 : Math.round((successCount * 1000.0) / totalAuditCount) / 10.0;
 
-        LocalDateTime last24Hours = LocalDateTime.now().minusHours(24);
-
-        long violationsLast24Hours = securityViolationLogRepository.countByCreatedAtAfter(last24Hours);
+        // 2. [핵심] '차단된 접근' 카드용: security_violation_logs 전체 누적 건수
+        long totalViolations = securityViolationLogRepository.count(); 
+        
+        // 3. '고위험 위협' 카드용: 처리 전 알림 건수
         long openAlertCount = anomalyAlertRepository.countByStatus(AlertStatus.OPEN);
+
+        // 4. 최근 24시간 관리자 접속 건수
+        LocalDateTime last24Hours = LocalDateTime.now().minusHours(24);
         long adminAccessLast24Hours = adminAccessLogRepository.countByCreatedAtAfter(last24Hours);
 
         return new AdminSecuritySummaryResponse(
                 totalAuditCount,
                 successRate,
-                violationsLast24Hours,
+                totalViolations, 
                 openAlertCount,
                 adminAccessLast24Hours
         );
+    }
+
+    /**
+     * 프론트엔드 누적 카운트 API 전용 메서드
+     * 
+     */
+    public long getTotalAccessLogCount() {
+        return securityViolationLogRepository.count();
     }
 
     @Transactional
@@ -80,212 +95,92 @@ public class AdminSecurityService {
                         MaskingAuditLog.success(paymentId, virtualAccountId, maskedAccountNumber)
                 );
             } else {
-                String reason = "결제 완료 상태인데 maskedAccountNumber가 없거나 마스킹 형식이 아닙니다.";
-
+                String reason = "마스킹 데이터 누락 혹은 형식 오류";
                 maskingAuditLogRepository.save(
                         MaskingAuditLog.fail(paymentId, virtualAccountId, maskedAccountNumber, reason)
                 );
-
                 createMaskingFailureAlert(paymentId, virtualAccountId, reason);
             }
         }
-
         return accounts.size();
     }
 
     private boolean isValidMaskedAccount(String maskedAccountNumber) {
-        return maskedAccountNumber != null
-                && !maskedAccountNumber.isBlank()
-                && maskedAccountNumber.contains("*");
+        return maskedAccountNumber != null && !maskedAccountNumber.isBlank() && maskedAccountNumber.contains("*");
     }
 
     private void createMaskingFailureAlert(Long paymentId, Long virtualAccountId, String reason) {
-        AnomalyAlert alert = AnomalyAlert.open(
-                AlertLevel.CRITICAL,
-                "민감 데이터 마스킹 실패",
-                null,
-                1L,
-                "paymentId=" + paymentId
-                        + ", virtualAccountId=" + virtualAccountId
-                        + ", reason=" + reason
-        );
-
-        anomalyAlertRepository.save(alert);
+        anomalyAlertRepository.save(AnomalyAlert.open(
+                AlertLevel.CRITICAL, "데이터 마스킹 실패 탐지", null, 1L,
+                "virtualAccountId=" + virtualAccountId + ", 사유=" + reason
+        ));
     }
 
     public List<MaskingAuditResponse> getRecentMaskingAuditLogs() {
-        return maskingAuditLogRepository.findTop50ByOrderByCreatedAtDesc()
-                .stream()
-                .map(MaskingAuditResponse::from)
-                .toList();
+        return maskingAuditLogRepository.findTop50ByOrderByCreatedAtDesc().stream().map(MaskingAuditResponse::from).toList();
     }
 
     public List<AdminAccessLogResponse> getRecentAdminAccessLogs() {
-        return adminAccessLogRepository.findTop50ByOrderByCreatedAtDesc()
-                .stream()
-                .map(AdminAccessLogResponse::from)
-                .toList();
+        return adminAccessLogRepository.findTop20ByOrderByCreatedAtDesc().stream().map(AdminAccessLogResponse::from).toList();
     }
 
     public List<SecurityViolationResponse> getRecentSecurityViolationLogs() {
-        return securityViolationLogRepository.findTop50ByOrderByCreatedAtDesc()
-                .stream()
-                .map(SecurityViolationResponse::from)
-                .toList();
+        // Repository에 추가한 findTop20ByOrderByCreatedAtDesc 사용
+        return securityViolationLogRepository.findTop20ByOrderByCreatedAtDesc().stream().map(SecurityViolationResponse::from).toList();
     }
 
     public List<ViolationHourlyStatResponse> getHourlyViolationStats() {
         LocalDateTime from = LocalDateTime.now().minusHours(24);
-
         return securityViolationLogRepository.countHourlyViolations(from)
                 .stream()
-                .map(row -> new ViolationHourlyStatResponse(
-                        String.valueOf(row[0]),
-                        ((Number) row[1]).longValue()
-                ))
+                .map(row -> new ViolationHourlyStatResponse(String.valueOf(row[0]), ((Number) row[1]).longValue()))
                 .toList();
     }
 
     public List<AnomalyAlertResponse> getRecentAlerts() {
-        return anomalyAlertRepository.findTop50ByOrderByCreatedAtDesc()
-                .stream()
-                .map(AnomalyAlertResponse::from)
-                .toList();
+        return anomalyAlertRepository.findTop50ByOrderByCreatedAtDesc().stream().map(AnomalyAlertResponse::from).toList();
     }
 
     @Transactional
     public AnomalyAlertResponse markAlertRead(Long alertId) {
         AnomalyAlert alert = anomalyAlertRepository.findById(alertId)
-                .orElseThrow(() -> new NoSuchElementException("알림을 찾을 수 없습니다. alertId=" + alertId));
-
+                .orElseThrow(() -> new NoSuchElementException("알림 ID " + alertId + "를 찾을 수 없습니다."));
         alert.markRead();
-
         return AnomalyAlertResponse.from(alert);
     }
 
     @Transactional
-    public void recordAdminAccess(
-            String username,
-            String ipAddress,
-            String method,
-            String path,
-            int statusCode,
-            String userAgent
-    ) {
-        AdminAccessLog log = AdminAccessLog.of(
-                username,
-                ipAddress,
-                method,
-                path,
-                statusCode,
-                userAgent
-        );
-
-        adminAccessLogRepository.save(log);
+    public void recordAdminAccess(String username, String ipAddress, String method, String path, int statusCode, String userAgent) {
+        adminAccessLogRepository.save(AdminAccessLog.of(username, ipAddress, method, path, statusCode, userAgent));
     }
 
     @Transactional
-    public void recordViolation(
-            String ipAddress,
-            String method,
-            String path,
-            int statusCode,
-            String userAgent
-    ) {
-        ViolationType violationType = resolveViolationType(statusCode);
-
-        SecurityViolationLog log = SecurityViolationLog.of(
-                ipAddress,
-                method,
-                path,
-                statusCode,
-                violationType,
-                userAgent,
-                "관리자 보호 리소스 접근이 차단되었습니다."
-        );
-
-        securityViolationLogRepository.save(log);
-
+    public void recordViolation(String ipAddress, String method, String path, int statusCode, String userAgent) {
+        ViolationType violationType = (statusCode == 401) ? ViolationType.UNAUTHORIZED_ACCESS : ViolationType.FORBIDDEN_ACCESS;
+        securityViolationLogRepository.save(SecurityViolationLog.of(ipAddress, method, path, statusCode, violationType, userAgent, "비인가 접근 차단"));
         detectRepeatedIpAccess(ipAddress);
-    }
-
-    private ViolationType resolveViolationType(int statusCode) {
-        if (statusCode == 401) {
-            return ViolationType.UNAUTHORIZED_ACCESS;
-        }
-
-        if (statusCode == 403) {
-            return ViolationType.FORBIDDEN_ACCESS;
-        }
-
-        return ViolationType.FORBIDDEN_ACCESS;
     }
 
     private void detectRepeatedIpAccess(String ipAddress) {
         LocalDateTime from = LocalDateTime.now().minusMinutes(REPEATED_IP_WINDOW_MINUTES);
-
         long recentCount = securityViolationLogRepository.countByIpAddressAndCreatedAtAfter(ipAddress, from);
+        if (recentCount < REPEATED_IP_THRESHOLD) return;
 
-        if (recentCount < REPEATED_IP_THRESHOLD) {
-            return;
-        }
+        String title = "동일 IP 반복 차단 탐지";
+        if (anomalyAlertRepository.existsBySourceIpAndTitleAndStatusAndCreatedAtAfter(ipAddress, title, AlertStatus.OPEN, from)) return;
 
-        String title = "동일 IP 반복 접근 탐지";
-
-        boolean alreadyExists = anomalyAlertRepository.existsBySourceIpAndTitleAndStatusAndCreatedAtAfter(
-                ipAddress,
-                title,
-                AlertStatus.OPEN,
-                from
-        );
-
-        if (alreadyExists) {
-            return;
-        }
-
-        AnomalyAlert alert = AnomalyAlert.open(
-                AlertLevel.WARNING,
-                title,
-                ipAddress,
-                recentCount,
-                REPEATED_IP_WINDOW_MINUTES + "분 이내에 동일 IP에서 관리자 보호 리소스 접근 차단이 "
-                        + recentCount + "회 발생했습니다."
-        );
-
-        anomalyAlertRepository.save(alert);
+        anomalyAlertRepository.save(AnomalyAlert.open(AlertLevel.WARNING, title, ipAddress, recentCount, "비정상 반복 접근 발생"));
     }
 
     @Transactional
     public void detectPaymentFailureSpike() {
         LocalDateTime from = LocalDateTime.now().minusMinutes(PAYMENT_FAILURE_WINDOW_MINUTES);
-
         long failedCount = paymentRepository.countByStatusAndCreatedAtAfter(TransactionStatus.FAILED, from);
+        if (failedCount < PAYMENT_FAILURE_THRESHOLD) return;
 
-        if (failedCount < PAYMENT_FAILURE_THRESHOLD) {
-            return;
-        }
+        String title = "결제 실패율 급증";
+        if (anomalyAlertRepository.existsByTitleAndStatusAndCreatedAtAfter(title, AlertStatus.OPEN, from)) return;
 
-        String title = "결제 실패 급증";
-
-        boolean alreadyExists = anomalyAlertRepository.existsByTitleAndStatusAndCreatedAtAfter(
-                title,
-                AlertStatus.OPEN,
-                from
-        );
-
-        if (alreadyExists) {
-            return;
-        }
-
-        AnomalyAlert alert = AnomalyAlert.open(
-                AlertLevel.CRITICAL,
-                title,
-                null,
-                failedCount,
-                PAYMENT_FAILURE_WINDOW_MINUTES + "분 이내에 결제 실패가 "
-                        + failedCount + "건 발생했습니다."
-        );
-
-        anomalyAlertRepository.save(alert);
+        anomalyAlertRepository.save(AnomalyAlert.open(AlertLevel.CRITICAL, title, null, failedCount, "단기간 내 결제 실패 다량 발생"));
     }
 }
