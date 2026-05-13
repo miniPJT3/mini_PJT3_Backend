@@ -158,27 +158,47 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PaymentResponse> getMyHistoryByEmail(String email) { // 메서드명 변경
-        // findByEmail을 사용하여 확실하게 이메일로 검색
+    public List<PaymentResponse> getMyHistoryByEmail(String email) {
+        // 1. 이메일로 회원 정보를 안전하게 가져옵니다.
         Member member = memberRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다. 이메일: " + email));
 
+        // 2. 해당 회원의 모든 결제 내역을 조회합니다.
         List<Payment> payments = paymentRepository.findAllByMemberId(member.getId());
 
         return payments.stream()
                 .map(p -> {
+                    // 3. 결제건에 연결된 가상계좌 정보를 찾습니다.
                     Optional<VirtualAccount> vaOptional = virtualAccountRepository.findByPaymentId(p.getId());
-                    String accountNum = vaOptional.map(VirtualAccount::getAccountNumber).orElse("계좌 정보 없음");
-                    String bankName = vaOptional.map(VirtualAccount::getBankName).orElse("은행 정보 없음");
 
+                    // 4. 계좌 정보 파싱 (만료시간 포함)
+                    String accountNum = vaOptional.map(VirtualAccount::getAccountNumber).orElse(null);
+                    String bankName = vaOptional.map(VirtualAccount::getBankName).orElse("은행 정보 없음");
+                    LocalDateTime expiredAt = vaOptional.map(VirtualAccount::getExpiredAt).orElse(null);
+
+                    // 5. 계좌번호 마스킹 처리 로직 추가 (032-6435... -> 032-*****7029)
+                    String maskedAccount = "계좌 정보 없음";
+                    if (accountNum != null && accountNum.contains("-")) {
+                        maskedAccount = accountNum.split("-")[0]
+                                + "-*****"
+                                + accountNum.substring(Math.max(0, accountNum.length() - 4));
+                    }
+
+                    // 디버깅용 로그 (필요 없으면 삭제하세요)
+                    System.out.println("조회 로그 -> 결제ID: " + p.getId() + " / 은행: " + bankName + " / 마스킹계좌: " + maskedAccount);
+
+                    // 6. 합쳐진 최종 빌더 응답
                     return PaymentResponse.builder()
                             .payUuid(p.getPayUuid())
                             .productName(p.getProductName())
-                            .depositedAmount(p.getTotalAmount())
+                            .totalAmount(p.getTotalAmount()) // DTO 필드명에 맞춰 totalAmount 사용
+                            .depositedAmount(p.getTotalAmount()) // 프론트 호환용
                             .status(p.getStatus())
-                            .maskedAccount(accountNum)
+                            .maskedAccount(maskedAccount)
                             .bankName(bankName)
-                            .message(p.getCreatedAt().toString())
+                            .expiredAt(expiredAt) // 추가된 로직: 만료 시간
+                            .createdAt(p.getCreatedAt())
+                            .message(p.getCreatedAt().toString()) // 기존 유지
                             .build();
                 })
                 .toList();
