@@ -3,8 +3,6 @@ package mini_pjt3.com.team1.service;
 import mini_pjt3.com.team1.dto.response.DailySalesResponse;
 import mini_pjt3.com.team1.dto.response.ProductRankResponse;
 import mini_pjt3.com.team1.dto.response.StatResponse;
-import mini_pjt3.com.team1.enums.Role;
-import mini_pjt3.com.team1.repository.MemberRepository;
 import mini_pjt3.com.team1.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
 
@@ -19,14 +17,9 @@ public class StatService {
     private static final Long FIXED_SELLER_ID = 10L;
 
     private final PaymentRepository paymentRepository;
-    private final MemberRepository memberRepository;
 
-    public StatService(
-            PaymentRepository paymentRepository,
-            MemberRepository memberRepository
-    ) {
+    public StatService( PaymentRepository paymentRepository) {
         this.paymentRepository = paymentRepository;
-        this.memberRepository = memberRepository;
     }
 
     public StatResponse getSellerSalesStat(
@@ -43,7 +36,7 @@ public class StatService {
                 paymentRepository.countPaidOrderBySellerId(sellerId);
 
         long customerCount =
-                memberRepository.countByRole(Role.USER);
+               paymentRepository.countDistinctPaidCustomerBySellerId(sellerId);
 
         BigDecimal periodTotalAmount =
                 paymentRepository.sumPaidTotalAmountBySellerIdAndUpdatedAtBetween(
