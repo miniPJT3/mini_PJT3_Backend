@@ -2,7 +2,10 @@ package mini_pjt3.com.team1.controller;
 
 import mini_pjt3.com.team1.dto.response.StatResponse;
 import mini_pjt3.com.team1.service.StatService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -14,11 +17,17 @@ public class DashboardController {
         this.statService = statService;
     }
 
-    @GetMapping("/sellers/{sellerId}/sales")
+    @GetMapping("/seller-sales")
     public StatResponse getSellerSalesStat(
-            @PathVariable Long sellerId,
-            @RequestParam(defaultValue = "DAILY") String period
+            @RequestParam(required = false, defaultValue = "10") Long sellerId,
+            @RequestParam String period,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        return statService.getSellerSalesStat(sellerId, period);
+        return statService.getSellerSalesStat(
+                period,
+                startDate,
+                endDate
+        );
     }
 }

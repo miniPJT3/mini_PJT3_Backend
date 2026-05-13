@@ -1,163 +1,149 @@
 package mini_pjt3.com.team1.service;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import mini_pjt3.com.team1.dto.response.DailySalesResponse;
 import mini_pjt3.com.team1.dto.response.ProductRankResponse;
 import mini_pjt3.com.team1.dto.response.StatResponse;
-import mini_pjt3.com.team1.entity.SellerSalesStat;
-import mini_pjt3.com.team1.repository.SellerSalesStatRepository;
+import mini_pjt3.com.team1.enums.Role;
+import mini_pjt3.com.team1.repository.MemberRepository;
+import mini_pjt3.com.team1.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class StatService {
 
-    private final SellerSalesStatRepository sellerSalesStatRepository;
+    private static final Long FIXED_SELLER_ID = 10L;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final PaymentRepository paymentRepository;
+    private final MemberRepository memberRepository;
 
-    public StatService(SellerSalesStatRepository sellerSalesStatRepository) {
-        this.sellerSalesStatRepository = sellerSalesStatRepository;
+    public StatService(
+            PaymentRepository paymentRepository,
+            MemberRepository memberRepository
+    ) {
+        this.paymentRepository = paymentRepository;
+        this.memberRepository = memberRepository;
     }
 
-    @Transactional(readOnly = true)
-    public StatResponse getSellerSalesStat(Long sellerId, String period) {
-        DateRange dateRange = calculateDateRange(period);
+    public StatResponse getSellerSalesStat(
+            String period,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        Long sellerId = FIXED_SELLER_ID;
 
-        List<SellerSalesStat> stats =
-                sellerSalesStatRepository.findBySellerIdAndStatDateBetweenOrderByStatDateAsc(
+        BigDecimal totalAmount =
+                paymentRepository.sumPaidTotalAmountBySellerId(sellerId);
+
+        long totalCount =
+                paymentRepository.countPaidOrderBySellerId(sellerId);
+
+        long customerCount =
+                memberRepository.countByRole(Role.USER);
+
+        BigDecimal periodTotalAmount =
+                paymentRepository.sumPaidTotalAmountBySellerIdAndUpdatedAtBetween(
                         sellerId,
-                        dateRange.startDate().toString(),
-                        dateRange.endDate().toString()
+                        startDate,
+                        endDate
                 );
 
-        List<DailySalesResponse> dailySales = stats.stream()
-                .map(DailySalesResponse::from)
+        long periodTotalCount =
+                paymentRepository.countPaidOrderBySellerIdAndUpdatedAtBetween(
+                        sellerId,
+                        startDate,
+                        endDate
+                );
+
+        List<Object[]> dailyRows =
+                paymentRepository.findDailyPaidSalesRowsBySellerIdAndUpdatedAtBetween(
+                        sellerId,
+                        startDate,
+                        endDate
+                );
+
+        List<DailySalesResponse> dailySales = dailyRows.stream()
+                .map(row -> new DailySalesResponse(
+                        toStringValue(row[0]),
+                        toBigDecimal(row[1]),
+                        toLong(row[2])
+                ))
                 .toList();
 
-        Long totalAmount = stats.stream()
-                .mapToLong(SellerSalesStat::getDailyAmount)
-                .sum();
+        List<Object[]> productRows =
+                paymentRepository.findTopPaidProductRowsBySellerIdAndUpdatedAtBetween(
+                        sellerId,
+                        startDate,
+                        endDate
+                );
 
-        Integer totalCount = stats.stream()
-                .mapToInt(SellerSalesStat::getDailyCount)
-                .sum();
+        AtomicInteger rank = new AtomicInteger(1);
 
-        List<ProductRankResponse> topProducts = findTopProducts(
-                sellerId,
-                dateRange.startDate(),
-                dateRange.endDate()
+        List<ProductRankResponse> topProducts = productRows.stream()
+                .map(row -> new ProductRankResponse(
+                        rank.getAndIncrement(),
+                        toStringValue(row[0]),
+                        toBigDecimal(row[1]),
+                        toLong(row[2])
+                ))
+                .toList();
+
+        StatResponse.FixedSummary fixedSummary = new StatResponse.FixedSummary(
+                nullToZero(totalAmount),
+                totalCount,
+                customerCount
         );
 
         return new StatResponse(
                 sellerId,
-                normalizePeriod(period),
-                dateRange.startDate(),
-                dateRange.endDate(),
-                totalAmount,
-                totalCount,
+                period,
+                startDate,
+                endDate,
+                fixedSummary,
+                nullToZero(periodTotalAmount),
+                periodTotalCount,
                 dailySales,
                 topProducts
         );
     }
 
-    private List<ProductRankResponse> findTopProducts(
-            Long sellerId,
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
-        String sql = """
-                SELECT
-                    product_name,
-                    COALESCE(SUM(total_amount), 0) AS sales_amount,
-                    COUNT(*) AS sales_count
-                FROM payments
-                WHERE seller_id = :sellerId
-                  AND status = 'PAID'
-                  AND DATE(created_at) BETWEEN :startDate AND :endDate
-                GROUP BY product_name
-                ORDER BY sales_amount DESC, sales_count DESC
-                LIMIT 5
-                """;
+    private BigDecimal nullToZero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
 
-        List<?> rows = entityManager.createNativeQuery(sql)
-                .setParameter("sellerId", sellerId)
-                .setParameter("startDate", startDate.toString())
-                .setParameter("endDate", endDate.toString())
-                .getResultList();
+    private String toStringValue(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
 
-        List<ProductRankResponse> responses = new ArrayList<>();
-
-        int rank = 1;
-
-        for (Object row : rows) {
-            Object[] columns = (Object[]) row;
-
-            String productName = String.valueOf(columns[0]);
-            Long salesAmount = ((Number) columns[1]).longValue();
-            Long salesCount = ((Number) columns[2]).longValue();
-
-            responses.add(new ProductRankResponse(
-                    rank,
-                    productName,
-                    salesAmount,
-                    salesCount
-            ));
-
-            rank++;
+    private BigDecimal toBigDecimal(Object value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
         }
 
-        return responses;
-    }
-
-    private DateRange calculateDateRange(String period) {
-        LocalDate today = LocalDate.now();
-        String normalizedPeriod = normalizePeriod(period);
-
-        return switch (normalizedPeriod) {
-            case "DAILY" -> new DateRange(today, today);
-
-            case "WEEKLY" -> {
-                LocalDate monday = today.with(DayOfWeek.MONDAY);
-                LocalDate sunday = today.with(DayOfWeek.SUNDAY);
-                yield new DateRange(monday, sunday);
-            }
-
-            case "MONTHLY" -> {
-                LocalDate firstDay = today.withDayOfMonth(1);
-                LocalDate lastDay = today.withDayOfMonth(today.lengthOfMonth());
-                yield new DateRange(firstDay, lastDay);
-            }
-
-            default -> throw new IllegalArgumentException("지원하지 않는 조회 기간입니다. DAILY, WEEKLY, MONTHLY 중 하나를 사용하세요.");
-        };
-    }
-
-    private String normalizePeriod(String period) {
-        if (period == null || period.isBlank()) {
-            return "DAILY";
+        if (value instanceof BigDecimal bigDecimal) {
+            return bigDecimal;
         }
 
-        String value = period.trim().toUpperCase();
+        if (value instanceof Number number) {
+            return BigDecimal.valueOf(number.longValue());
+        }
 
-        return switch (value) {
-            case "DAILY", "DAY", "일" -> "DAILY";
-            case "WEEKLY", "WEEK", "주" -> "WEEKLY";
-            case "MONTHLY", "MONTH", "월" -> "MONTHLY";
-            default -> value;
-        };
+        return new BigDecimal(value.toString());
     }
 
-    private record DateRange(
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
+    private long toLong(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+
+        return Long.parseLong(value.toString());
     }
 }
