@@ -97,7 +97,7 @@ public class SecurityConfig {
                 ).permitAll()
 
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/payments/**").hasAnyRole("USER", "ADMIN")
+                .requestMatchers("/api/payments/**").hasAnyRole("USER", "ADMIN", "SELLER")
 
                 .anyRequest().authenticated()
             )
