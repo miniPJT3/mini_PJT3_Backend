@@ -4,6 +4,7 @@ import mini_pjt3.com.team1.dto.response.*;
 import mini_pjt3.com.team1.entity.*;
 import mini_pjt3.com.team1.enums.*;
 import mini_pjt3.com.team1.repository.*;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -182,5 +183,20 @@ public class AdminSecurityService {
         if (anomalyAlertRepository.existsByTitleAndStatusAndCreatedAtAfter(title, AlertStatus.OPEN, from)) return;
 
         anomalyAlertRepository.save(AnomalyAlert.open(AlertLevel.CRITICAL, title, null, failedCount, "단기간 내 결제 실패 다량 발생"));
+    }
+
+    /**
+     * [보안 로그 정리] 2일 지난 로그 삭제
+     * 스케줄러(오후 4시)와 컨트롤러에서 공통으로 사용
+     */
+    @Transactional
+    public void cleanOldAuditLogs() {
+        LocalDateTime retentionPeriod = LocalDateTime.now().minusDays(2);
+
+        maskingAuditLogRepository.deleteByCreatedAtBefore(retentionPeriod);
+        adminAccessLogRepository.deleteByCreatedAtBefore(retentionPeriod);
+        securityViolationLogRepository.deleteByCreatedAtBefore(retentionPeriod);
+
+        System.out.println("보안 로그 정리가 완료되었습니다.");
     }
 }

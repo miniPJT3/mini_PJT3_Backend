@@ -1,17 +1,23 @@
 package mini_pjt3.com.team1.entity;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import mini_pjt3.com.team1.enums.AuditResult;
 
 @Entity
+@Getter
 @Table(
         name = "masking_audit_logs",
         indexes = {
                 @Index(name = "idx_masking_audit_payment_id", columnList = "payment_id"),
                 @Index(name = "idx_masking_audit_result", columnList = "result"),
+                // BaseEntity의 createdAt 필드가 DB의 created_at 컬럼과 매핑되므로 아래 설정은 올바릅니다.
                 @Index(name = "idx_masking_audit_created_at", columnList = "created_at")
         }
 )
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MaskingAuditLog extends BaseEntity {
 
     @Id
@@ -34,9 +40,7 @@ public class MaskingAuditLog extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String reason;
 
-    protected MaskingAuditLog() {
-    }
-
+    // 내부 객체 생성을 위한 생성자
     private MaskingAuditLog(
             Long paymentId,
             Long virtualAccountId,
@@ -51,16 +55,22 @@ public class MaskingAuditLog extends BaseEntity {
         this.reason = reason;
     }
 
+    /**
+     * 마스킹 성공 로그 생성
+     */
     public static MaskingAuditLog success(Long paymentId, Long virtualAccountId, String maskedAccountNumber) {
         return new MaskingAuditLog(
                 paymentId,
                 virtualAccountId,
                 maskedAccountNumber,
                 AuditResult.SUCCESS,
-                "마스킹 값이 정상적으로 존재합니다."
+                "정상 마스킹 처리되었습니다."
         );
     }
 
+    /**
+     * 마스킹 실패 로그 생성
+     */
     public static MaskingAuditLog fail(Long paymentId, Long virtualAccountId, String maskedAccountNumber, String reason) {
         return new MaskingAuditLog(
                 paymentId,
@@ -69,29 +79,5 @@ public class MaskingAuditLog extends BaseEntity {
                 AuditResult.FAIL,
                 reason
         );
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Long getPaymentId() {
-        return paymentId;
-    }
-
-    public Long getVirtualAccountId() {
-        return virtualAccountId;
-    }
-
-    public String getMaskedAccountNumber() {
-        return maskedAccountNumber;
-    }
-
-    public AuditResult getResult() {
-        return result;
-    }
-
-    public String getReason() {
-        return reason;
     }
 }
