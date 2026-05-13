@@ -126,7 +126,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
           AND p.status = 'PAID'
           AND DATE(p.updated_at) BETWEEN :startDate AND :endDate
         GROUP BY p.product_name
-        ORDER BY amount DESC, payment_count DESC
+        ORDER BY payment_count DESC, amount DESC
         LIMIT 5
     """, nativeQuery = true)
     List<Object[]> findTopPaidProductRowsBySellerIdAndUpdatedAtBetween(
@@ -134,4 +134,15 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    // 결제 완료된 주문에서 중복되지 않는 고객 수 조회
+    @Query(value = """
+        SELECT COUNT(DISTINCT p.member_id)
+        FROM payment p
+        JOIN product pr ON p.product_id = pr.id
+        WHERE pr.seller_id = :sellerId
+        AND p.status = 'PAID'
+        AND p.member_id IS NOT NULL
+        """, nativeQuery = true)
+        long countDistinctPaidCustomerBySellerId(@Param("sellerId") Long sellerId);
 }
