@@ -11,7 +11,6 @@ spring:
 
   # Database 설정 (AWS RDS MySQL)
   datasource:
-    #jdbc:mysql://terraform-20260508075842560200000001.c18y4gs8uo61.ap-northeast-2.rds.amazonaws.com:3306/mydb?useSSL=false&serverTimezone=Asia/Seoul
     url: jdbc:mysql://localhost:3308/mydb?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: admin
