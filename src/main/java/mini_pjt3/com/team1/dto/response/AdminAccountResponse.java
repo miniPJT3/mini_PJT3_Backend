@@ -30,7 +30,7 @@ public record AdminAccountResponse(
         );
     }
 
-    private static String maskName(String name) {
+    public static String maskName(String name) {
         if (name == null || name.isBlank()) {
             return "알 수 없음";
         }
@@ -50,7 +50,7 @@ public record AdminAccountResponse(
                 + name.charAt(length - 1);
     }
 
-    private static String maskPhone(String phone) {
+    public static String maskPhone(String phone) {
         if (phone == null || phone.isBlank()) {
             return "전화번호 정보 없음";
         }
@@ -85,7 +85,7 @@ public record AdminAccountResponse(
                 + suffix;
     }
 
-    private static String maskEmail(String email) {
+    public static String maskEmail(String email) {
         if (email == null || email.isBlank()) {
             return "이메일 정보 없음";
         }
@@ -102,7 +102,7 @@ public record AdminAccountResponse(
         return maskEmailLocalPart(localPart) + domain;
     }
 
-    private static String maskLoginId(String loginId) {
+    public static String maskLoginId(String loginId) {
         if (loginId == null || loginId.isBlank()) {
             return "아이디 정보 없음";
         }
@@ -110,7 +110,7 @@ public record AdminAccountResponse(
         return maskEmailLocalPart(loginId);
     }
 
-    private static String maskEmailLocalPart(String value) {
+    public static String maskEmailLocalPart(String value) {
         int length = value.length();
 
         if (length <= 2) {

@@ -87,16 +87,31 @@ public class AdminSecurityService {
         List<VirtualAccount> accounts = virtualAccountRepository.findAllByPaymentStatusForAudit(TransactionStatus.PAID);
 
         for (VirtualAccount account : accounts) {
-            Long paymentId = account.getPayment().getId();
+            Payment payment = account.getPayment(); // 결제 정보 가져오기
+            Long paymentId = payment.getId();
             Long virtualAccountId = account.getId();
-            String maskedAccountNumber = account.getMaskedAccountNumber();
+            Member member = payment.getMember();
 
-            if (isValidMaskedAccount(maskedAccountNumber)) {
+            // 1. 각 항목별 마스킹 데이터 추출
+            String maskedAccountNumber = account.getMaskedAccountNumber();
+            String maskedName = AdminAccountResponse.maskName(member.getName());
+            String maskedPhone = AdminAccountResponse.maskPhone(member.getPhone());
+            String maskedEmail = AdminAccountResponse.maskEmail(member.getEmail());
+
+            // 2. 통합 검증 (기존 isValid 로직 확장)
+            boolean isAllValid = isValidMaskedAccount(maskedAccountNumber)
+                    && isValidMaskedName(maskedName)
+                    && isValidMaskedPhone(maskedPhone)
+                    && isValidMaskedEmail(maskedEmail);
+
+            if (isAllValid) {
                 maskingAuditLogRepository.save(
-                        MaskingAuditLog.success(paymentId, virtualAccountId, maskedAccountNumber)
+                        // 확장된 success 메서드 호출 🥊
+                        MaskingAuditLog.success(paymentId, virtualAccountId,
+                                maskedName, maskedAccountNumber, maskedPhone, maskedEmail)
                 );
             } else {
-                String reason = "마스킹 데이터 누락 혹은 형식 오류";
+                String reason = "개인정보 항목 중 마스킹 오류 발견 (성함/계좌/폰/이메일)";
                 maskingAuditLogRepository.save(
                         MaskingAuditLog.fail(paymentId, virtualAccountId, maskedAccountNumber, reason)
                 );
@@ -104,6 +119,20 @@ public class AdminSecurityService {
             }
         }
         return accounts.size();
+    }
+    // 성함 마스킹 검증
+    private boolean isValidMaskedName(String maskedName) {
+        return maskedName != null && !maskedName.contains("알 수 없음") && maskedName.contains("*");
+    }
+
+    // 전화번호 마스킹 검증
+    private boolean isValidMaskedPhone(String maskedPhone) {
+        return maskedPhone != null && !maskedPhone.contains("정보 없음") && maskedPhone.contains("*");
+    }
+
+    // 이메일 마스킹 검증
+    private boolean isValidMaskedEmail(String maskedEmail) {
+        return maskedEmail != null && !maskedEmail.contains("정보 없음") && maskedEmail.contains("*") && maskedEmail.contains("@");
     }
 
     private boolean isValidMaskedAccount(String maskedAccountNumber) {
