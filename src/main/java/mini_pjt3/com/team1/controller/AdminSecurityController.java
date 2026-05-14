@@ -1,5 +1,6 @@
 package mini_pjt3.com.team1.controller;
 
+import lombok.RequiredArgsConstructor;
 import mini_pjt3.com.team1.dto.response.*;
 import mini_pjt3.com.team1.service.AdminSecurityService;
 import org.springframework.http.ResponseEntity;
@@ -12,17 +13,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/security")
 @PreAuthorize("hasRole('ADMIN')")
+@RequiredArgsConstructor // 생성자 주입을 Lombok으로 대체하여 깔끔하게 변경
 public class AdminSecurityController {
 
     private final AdminSecurityService adminSecurityService;
 
-    public AdminSecurityController(AdminSecurityService adminSecurityService) {
-        this.adminSecurityService = adminSecurityService;
-    }
-
     /**
      * [대시보드 상단 요약 정보]
-     * 
      */
     @GetMapping("/summary")
     public AdminSecuritySummaryResponse getSummary() {
@@ -31,18 +28,14 @@ public class AdminSecurityController {
 
     /**
      * [차단된 접근 누적 카운트]
-     * 
-     * 
      */
     @GetMapping("/violations/count")
     public ResponseEntity<Long> getAdminAccessLogsCount() {
-        // 서비스에서 securityViolationLogRepository.count()를 호출하도록 연결됨
         return ResponseEntity.ok(adminSecurityService.getTotalAccessLogCount());
     }
 
     /**
      * [실시간 보안 위반 로그 리스트]
-     * 
      */
     @GetMapping("/violations")
     public List<SecurityViolationResponse> getSecurityViolationLogs() {
@@ -51,7 +44,6 @@ public class AdminSecurityController {
 
     /**
      * [마스킹 감사 실행]
-     * 
      */
     @PostMapping("/masking-audits/run")
     public Map<String, Integer> runMaskingAudit() {
@@ -77,7 +69,6 @@ public class AdminSecurityController {
 
     /**
      * [시간별 위반 통계]
-     * 
      */
     @GetMapping("/violations/hourly")
     public List<ViolationHourlyStatResponse> getHourlyViolationStats() {
@@ -98,5 +89,15 @@ public class AdminSecurityController {
     @PatchMapping("/alerts/{alertId}/read")
     public AnomalyAlertResponse markAlertRead(@PathVariable Long alertId) {
         return adminSecurityService.markAlertRead(alertId);
+    }
+
+    /**
+     * [보안 로그 수동 정리]
+     *
+     */
+    @DeleteMapping("/logs/cleanup")
+    public ResponseEntity<Map<String, String>> cleanupLogs() {
+        adminSecurityService.cleanOldAuditLogs();
+        return ResponseEntity.ok(Map.of("message", "오래된 보안 로그 정리가 완료되었습니다."));
     }
 }
