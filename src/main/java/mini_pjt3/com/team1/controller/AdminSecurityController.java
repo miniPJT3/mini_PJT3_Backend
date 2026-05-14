@@ -60,6 +60,15 @@ public class AdminSecurityController {
     }
 
     /**
+     * [실시간 위험 추이]
+     */
+    @GetMapping("/threat-trend")
+public ResponseEntity<?> getThreatTrend() {
+    // 서비스에 정의된 정확한 메서드명인 getRecent3HourThreatTrend()를 호출해야 합니다.
+    return ResponseEntity.ok(adminSecurityService.getRecent3HourThreatTrend());
+}
+
+    /**
      * [관리자 접근 로그 조회]
      */
     @GetMapping("/access-logs")

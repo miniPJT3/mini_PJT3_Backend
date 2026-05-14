@@ -38,6 +38,9 @@ public interface SecurityViolationLogRepository extends JpaRepository<SecurityVi
      * 특정 IP의 공격 횟수 카운트 (이상 징후 탐지용)
      */
     long countByIpAddressAndCreatedAtAfter(String ipAddress, LocalDateTime createdAt);
+    
+    // 특정 시간대 사이의 위반 건수 카운트
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
     /**
      * 시간별 보안 위협 추이 분석 (차트 데이터용)
