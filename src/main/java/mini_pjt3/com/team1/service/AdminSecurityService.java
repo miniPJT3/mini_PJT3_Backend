@@ -45,30 +45,56 @@ public class AdminSecurityService {
     }
 
     /**
-     * 대시보드 상단 요약 정보 (4가지 카드) 조회
+     * 대시보드 상단 요약 정보 및 실시간 마스킹 감사 차트 데이터 조회
      */
     public AdminSecuritySummaryResponse getSummary() {
-        // 1. 마스킹 성공률 데이터
-        long totalAuditCount = maskingAuditLogRepository.count();
-        long successCount = maskingAuditLogRepository.countByResult(AuditResult.SUCCESS);
+        // 1. 마스킹 성공률 데이터 (기존 유지)
+        List<MaskingAuditLog> allLogs = maskingAuditLogRepository.findAll(); // 🥊 전체 로그 리스트업
+        long totalAuditCount = allLogs.size();
+
+        long successCount = allLogs.stream()
+                .filter(l -> l.getResult() == AuditResult.SUCCESS).count();
+
         double successRate = totalAuditCount == 0
                 ? 0.0
                 : Math.round((successCount * 1000.0) / totalAuditCount) / 10.0;
 
-        // 2. [핵심] '차단된 접근' 카드용: security_violation_logs 전체 누적 건수
-        long totalViolations = securityViolationLogRepository.count(); 
-        
-        // 3. '고위험 위협' 카드용: 처리 전 알림 건수
+        // 🥊 [추가] 항목별 '*' 미포함(실패) 건수 실시간 계산 로직
+        // 데이터가 null이 아니면서 '*'을 포함하지 않는 경우를 '마스킹 누락'으로 판단합니다.
+        long accountFails = allLogs.stream()
+                .filter(l -> l.getMaskedAccountNumber() != null && !l.getMaskedAccountNumber().contains("*")).count();
+        long nameFails = allLogs.stream()
+                .filter(l -> l.getMaskedName() != null && !l.getMaskedName().contains("*")).count();
+        long emailFails = allLogs.stream()
+                .filter(l -> l.getMaskedEmail() != null && !l.getMaskedEmail().contains("*")).count();
+        long phoneFails = allLogs.stream()
+                .filter(l -> l.getMaskedPhone() != null && !l.getMaskedPhone().contains("*")).count();
+
+        // 🥊 [추가] 항목별 성공률 산출
+        double accountRate = totalAuditCount == 0 ? 100.0 : Math.round(((totalAuditCount - accountFails) * 1000.0) / totalAuditCount) / 10.0;
+        double nameRate = totalAuditCount == 0 ? 100.0 : Math.round(((totalAuditCount - nameFails) * 1000.0) / totalAuditCount) / 10.0;
+        double emailRate = totalAuditCount == 0 ? 100.0 : Math.round(((totalAuditCount - emailFails) * 1000.0) / totalAuditCount) / 10.0;
+        double phoneRate = totalAuditCount == 0 ? 100.0 : Math.round(((totalAuditCount - phoneFails) * 1000.0) / totalAuditCount) / 10.0;
+
+        // 2. '차단된 접근' 카드용 (기존 유지)
+        long totalViolations = securityViolationLogRepository.count();
+
+        // 3. '고위험 위협' 카드용 (기존 유지)
         long openAlertCount = anomalyAlertRepository.countByStatus(AlertStatus.OPEN);
 
-        // 4. 최근 24시간 관리자 접속 건수
+        // 4. 최근 24시간 관리자 접속 건수 (기존 유지)
         LocalDateTime last24Hours = LocalDateTime.now().minusHours(24);
         long adminAccessLast24Hours = adminAccessLogRepository.countByCreatedAtAfter(last24Hours);
 
+        // 🥊 DTO 순서에 맞춰서 리턴 (accountRate, nameRate, emailRate, phoneRate 순서 주의!)
         return new AdminSecuritySummaryResponse(
                 totalAuditCount,
                 successRate,
-                totalViolations, 
+                accountRate,
+                nameRate,
+                emailRate,
+                phoneRate,
+                totalViolations,
                 openAlertCount,
                 adminAccessLast24Hours
         );
