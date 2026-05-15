@@ -8,12 +8,17 @@ server:
 spring:
   application:
     name: SafePay-Vault
+  
+  # 1. 로컬 설정 파일을 포함하도록 추가
+  profiles:
+    include: local
 
   # Database 설정 (AWS RDS MySQL)
   datasource:
     url: jdbc:mysql://localhost:3308/mydb?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: admin
+    # 비밀번호도 환경 변수 처리가 되어있어 안전합니다.
     password: ${RDS_PASSWORD:mysql1234}
 
   # JPA 및 Hibernate 설정
@@ -29,21 +34,21 @@ spring:
     defer-datasource-initialization: true
     open-in-view: false
 
-  # Redis 설정 (JWT Refresh Token 및 캐시용)
+  # Redis 설정
   data:
     redis:
       host: localhost
       port: 6379
 
-  #  OAuth2 설정 (구글 소셜 로그인)
+  # OAuth2 설정 (구글 소셜 로그인)
   security:
     oauth2:
       client:
         registration:
           google:
-            client-id: 746271667399-ucbm9vc16mc515fqsnqh8v50abpckeu7.apps.googleusercontent.com
-            client-secret: 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
-            # 구글 로그인 후 돌아올 백엔드 경로
+            # application-local.yml의 값을 우선 사용하고, 없으면 기본값 사용
+            client-id: ${GOOGLE_CLIENT_ID:your-id-here}
+            client-secret: ${GOOGLE_CLIENT_SECRET:your-secret-here}
             redirect-uri: "{baseUrl}/login/oauth2/code/google"
             scope:
               - email
@@ -54,9 +59,8 @@ spring:
     init:
       mode: NEVER
 
-#  JWT 커스텀 설정
+# JWT 커스텀 설정
 jwt:
-  # 보안을 위해 실제 운영 환경에서는 환경 변수를 사용
   secret: ${JWT_SECRET_KEY:your_default_secret_key_at_least_32_characters_long_for_security}
   access-token-expiration: 3600000 # 1시간
   refresh-token-expiration: 604800000 # 7일
@@ -66,5 +70,4 @@ logging:
   level:
     org.springframework.security: DEBUG
     mini_pjt3.com.team1: DEBUG
-    # 쿼리 파라미터 로그 확인용
     org.hibernate.type.descriptor.sql: TRACE
