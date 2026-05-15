@@ -4,13 +4,11 @@ import mini_pjt3.com.team1.dto.response.*;
 import mini_pjt3.com.team1.entity.*;
 import mini_pjt3.com.team1.enums.*;
 import mini_pjt3.com.team1.repository.*;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 @Service
 @Transactional(readOnly = true)
@@ -45,39 +43,85 @@ public class AdminSecurityService {
     }
 
     /**
-     * 대시보드 상단 요약 정보 (4가지 카드) 조회
+/**
+     * 컨트롤러(AdminSecurityController)에서 호출하는 메서드명으로 통일
+     * 최근 3시간 시간대별 위협 추이 데이터 생성
+     */
+    public List<Map<String, Object>> getRecent3HourThreatTrend() {
+        List<Map<String, Object>> trendData = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+
+        // 최근 3시간 (현재 시각 포함 0, 1, 2시간 전) 데이터를 수집
+        for (int i = 2; i >= 0; i--) {
+            LocalDateTime hourStart = now.minusHours(i).withMinute(0).withSecond(0).withNano(0);
+            LocalDateTime hourEnd = hourStart.plusMinutes(59).plusSeconds(59).withNano(999999999);
+            
+            // 보안 위반 로그 건수 카운트
+            long count = securityViolationLogRepository.countByCreatedAtBetween(hourStart, hourEnd);
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("time", hourStart.getHour() + "시");
+            data.put("threat", count);
+            trendData.add(data);
+        }
+        return trendData;
+    }
+
+    /**
+     * 대시보드 상단 요약 정보 및 실시간 마스킹 감사 차트 데이터 조회
      */
     public AdminSecuritySummaryResponse getSummary() {
-        // 1. 마스킹 성공률 데이터
-        long totalAuditCount = maskingAuditLogRepository.count();
-        long successCount = maskingAuditLogRepository.countByResult(AuditResult.SUCCESS);
+        // 1. 마스킹 성공률 데이터 조회
+        List<MaskingAuditLog> allLogs = maskingAuditLogRepository.findAll();
+        long totalAuditCount = allLogs.size();
+
+        long successCount = allLogs.stream()
+                .filter(l -> l.getResult() == AuditResult.SUCCESS).count();
+
         double successRate = totalAuditCount == 0
                 ? 0.0
                 : Math.round((successCount * 1000.0) / totalAuditCount) / 10.0;
 
-        // 2. [핵심] '차단된 접근' 카드용: security_violation_logs 전체 누적 건수
-        long totalViolations = securityViolationLogRepository.count(); 
-        
-        // 3. '고위험 위협' 카드용: 처리 전 알림 건수
+        //항목별 '*' 미포함(실패) 건수 실시간 계산 로직
+        long accountFails = allLogs.stream()
+                .filter(l -> l.getMaskedAccountNumber() != null && !l.getMaskedAccountNumber().contains("*")).count();
+        long nameFails = allLogs.stream()
+                .filter(l -> l.getMaskedName() != null && !l.getMaskedName().contains("*")).count();
+        long emailFails = allLogs.stream()
+                .filter(l -> l.getMaskedEmail() != null && !l.getMaskedEmail().contains("*")).count();
+        long phoneFails = allLogs.stream()
+                .filter(l -> l.getMaskedPhone() != null && !l.getMaskedPhone().contains("*")).count();
+
+        // 항목별 성공률 산출
+        double accountRate = totalAuditCount == 0 ? 100.0 : Math.round(((totalAuditCount - accountFails) * 1000.0) / totalAuditCount) / 10.0;
+        double nameRate = totalAuditCount == 0 ? 100.0 : Math.round(((totalAuditCount - nameFails) * 1000.0) / totalAuditCount) / 10.0;
+        double emailRate = totalAuditCount == 0 ? 100.0 : Math.round(((totalAuditCount - emailFails) * 1000.0) / totalAuditCount) / 10.0;
+        double phoneRate = totalAuditCount == 0 ? 100.0 : Math.round(((totalAuditCount - phoneFails) * 1000.0) / totalAuditCount) / 10.0;
+
+        // 2. '차단된 접근' 카드용
+        long totalViolations = securityViolationLogRepository.count();
+
+        // 3. '고위험 위협' 카드용
         long openAlertCount = anomalyAlertRepository.countByStatus(AlertStatus.OPEN);
 
         // 4. 최근 24시간 관리자 접속 건수
         LocalDateTime last24Hours = LocalDateTime.now().minusHours(24);
         long adminAccessLast24Hours = adminAccessLogRepository.countByCreatedAtAfter(last24Hours);
 
+        // DTO 순서에 맞춰서 리턴
         return new AdminSecuritySummaryResponse(
                 totalAuditCount,
                 successRate,
-                totalViolations, 
+                accountRate,
+                nameRate,
+                emailRate,
+                phoneRate,
+                totalViolations,
                 openAlertCount,
                 adminAccessLast24Hours
         );
     }
 
-    /**
-     * 프론트엔드 누적 카운트 API 전용 메서드
-     * 
-     */
     public long getTotalAccessLogCount() {
         return securityViolationLogRepository.count();
     }
@@ -87,18 +131,16 @@ public class AdminSecurityService {
         List<VirtualAccount> accounts = virtualAccountRepository.findAllByPaymentStatusForAudit(TransactionStatus.PAID);
 
         for (VirtualAccount account : accounts) {
-            Payment payment = account.getPayment(); // 결제 정보 가져오기
+            Payment payment = account.getPayment();
             Long paymentId = payment.getId();
             Long virtualAccountId = account.getId();
             Member member = payment.getMember();
 
-            // 1. 각 항목별 마스킹 데이터 추출
             String maskedAccountNumber = account.getMaskedAccountNumber();
             String maskedName = AdminAccountResponse.maskName(member.getName());
             String maskedPhone = AdminAccountResponse.maskPhone(member.getPhone());
             String maskedEmail = AdminAccountResponse.maskEmail(member.getEmail());
 
-            // 2. 통합 검증 (기존 isValid 로직 확장)
             boolean isAllValid = isValidMaskedAccount(maskedAccountNumber)
                     && isValidMaskedName(maskedName)
                     && isValidMaskedPhone(maskedPhone)
@@ -106,7 +148,6 @@ public class AdminSecurityService {
 
             if (isAllValid) {
                 maskingAuditLogRepository.save(
-                        // 확장된 success 메서드 호출 🥊
                         MaskingAuditLog.success(paymentId, virtualAccountId,
                                 maskedName, maskedAccountNumber, maskedPhone, maskedEmail)
                 );
@@ -120,17 +161,15 @@ public class AdminSecurityService {
         }
         return accounts.size();
     }
-    // 성함 마스킹 검증
+
     private boolean isValidMaskedName(String maskedName) {
         return maskedName != null && !maskedName.contains("알 수 없음") && maskedName.contains("*");
     }
 
-    // 전화번호 마스킹 검증
     private boolean isValidMaskedPhone(String maskedPhone) {
         return maskedPhone != null && !maskedPhone.contains("정보 없음") && maskedPhone.contains("*");
     }
 
-    // 이메일 마스킹 검증
     private boolean isValidMaskedEmail(String maskedEmail) {
         return maskedEmail != null && !maskedEmail.contains("정보 없음") && maskedEmail.contains("*") && maskedEmail.contains("@");
     }
@@ -155,7 +194,6 @@ public class AdminSecurityService {
     }
 
     public List<SecurityViolationResponse> getRecentSecurityViolationLogs() {
-        // Repository에 추가한 findTop20ByOrderByCreatedAtDesc 사용
         return securityViolationLogRepository.findTop20ByOrderByCreatedAtDesc().stream().map(SecurityViolationResponse::from).toList();
     }
 
@@ -215,17 +253,17 @@ public class AdminSecurityService {
     }
 
     /**
-     * [보안 로그 정리] 2일 지난 로그 삭제
-     * 스케줄러(오후 4시)와 컨트롤러에서 공통으로 사용
+     * 오래된 보안 로그 정리 (수동 호출 및 스케줄러용)
      */
     @Transactional
     public void cleanOldAuditLogs() {
-        LocalDateTime retentionPeriod = LocalDateTime.now().minusDays(2);
-
+        // 보관 주기 설정 (예: 90일 이전 데이터 삭제)
+        LocalDateTime retentionPeriod = LocalDateTime.now().minusDays(90);
+        
         maskingAuditLogRepository.deleteByCreatedAtBefore(retentionPeriod);
         adminAccessLogRepository.deleteByCreatedAtBefore(retentionPeriod);
         securityViolationLogRepository.deleteByCreatedAtBefore(retentionPeriod);
-
-        System.out.println("보안 로그 정리가 완료되었습니다.");
+        
+        System.out.println("보안 로그 정리가 완료되었습니다. (기준일: " + retentionPeriod + ")");
     }
 }

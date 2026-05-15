@@ -80,4 +80,13 @@ public class PaymentController {
     public ResponseEntity<PaymentResponse> reportDeposit(@PathVariable String payUuid) {
         return ResponseEntity.ok(paymentService.reportDeposit(payUuid));
     }
+
+    @PostMapping("/{payUuid}/expire")
+    public ResponseEntity<Void> expirePayment(@PathVariable String payUuid) {
+        // 🥊 여기서 ServiceImpl의 expirePayment를 호출합니다!
+        paymentService.expirePayment(payUuid);
+
+        // 성공 시 200 OK 응답을 보냅니다.
+        return ResponseEntity.ok().build();
+    }
 }
