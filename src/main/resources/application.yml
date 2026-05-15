@@ -47,8 +47,8 @@ spring:
         registration:
           google:
             # application-local.yml의 값을 우선 사용하고, 없으면 기본값 사용
-            client-id: ${GOOGLE_CLIENT_ID:your-id-here}
-            client-secret: ${GOOGLE_CLIENT_SECRET:your-secret-here}
+            client-id: 746271667399-ucbm9vc16mc515fqsnqh8v50abpckeu7.apps.googleusercontent.com
+            client-secret: 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
             redirect-uri: "{baseUrl}/login/oauth2/code/google"
             scope:
               - email
