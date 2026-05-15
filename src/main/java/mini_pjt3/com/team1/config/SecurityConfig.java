@@ -91,12 +91,13 @@ public class SecurityConfig {
                     "/api/auth/**",                //로그아웃(/api/auth/logout) 포함 모든 auth API 허용
                     "/api/sse/**",
                     "/api/test/**",
-                    "/api/dashboard/**",
                     "/api/products/**",
                     "/api/member/me",
                     "/api/member/additional-info",
                     "/assets/**", "/css/**", "/js/**", "/favicon.ico", "/error"
                 ).permitAll()
+                // 판매자 대시보드: SELLER, ADMIN만 접근 가능
+                .requestMatchers("/api/dashboard/seller-sales").hasAnyRole("SELLER", "ADMIN")
 
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/payments/**").hasAnyRole("USER", "ADMIN", "SELLER")
