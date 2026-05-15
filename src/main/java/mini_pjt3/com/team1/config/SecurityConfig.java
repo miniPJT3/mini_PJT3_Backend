@@ -100,6 +100,7 @@ public class SecurityConfig {
                     "/api/sse/**",
                     "/api/test/**",
                     "/api/products/**",
+                        "/api/dashboard/**",
                     "/api/member/me",
                     "/api/member/additional-info",
                     "/assets/**", "/css/**", "/js/**", "/favicon.ico", "/error", "/api/health"
