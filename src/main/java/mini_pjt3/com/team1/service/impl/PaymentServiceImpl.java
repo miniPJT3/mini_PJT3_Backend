@@ -252,6 +252,29 @@ public class PaymentServiceImpl implements PaymentService {
         // 2. 찾은 멤버의 PK(id)를 사용하여 기존 로직(issueVirtualAccount)을 호출합니다.
         return issueVirtualAccount(member.getId(), dto);
     }
+
+    @Override
+    @Transactional
+    public void expirePayment(String payUuid) {
+        // 1. 결제 정보 조회
+        Payment payment = paymentRepository.findByPayUuid(payUuid)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 결제 내역입니다."));
+
+        // 2. 이미 완료된 결제는 만료시키지 않음
+        if (payment.getStatus() == TransactionStatus.PAID) {
+            return;
+        }
+
+        // 3. 결제 상태 변경 (EXPIRED)
+        payment.updateStatus(TransactionStatus.EXPIRED);
+
+        // 4. 연결된 가상계좌 상태 변경 (EXPIRED)
+        virtualAccountRepository.findByPaymentId(payment.getId()).ifPresent(va -> {
+            va.setStatus(AccountStatus.EXPIRED); //
+        });
+    }
+
+
     private String maskName(String name) {
         if (name == null || name.isBlank()) {
                 return "알 수 없음";
@@ -306,4 +329,5 @@ public class PaymentServiceImpl implements PaymentService {
         return "*".repeat(accountNumber.length() - 4)
                 + accountNumber.substring(accountNumber.length() - 4);
         }
+
 }

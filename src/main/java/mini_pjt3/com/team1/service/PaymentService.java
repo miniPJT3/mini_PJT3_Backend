@@ -26,4 +26,6 @@ public interface PaymentService {
     SimulationResponse checkSimulationLogic(SimulationRequest request);
 
     PaymentResponse issueByEmail(String email, PaymentRequest dto);
+
+    void expirePayment(String payUuid);
 }
