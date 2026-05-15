@@ -21,6 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -29,7 +30,7 @@ public class SecurityConfig {
 
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final SseService sseService; // SSE 실시간 알림 및 DB 저장을 위해 주입
-    private final JwtAuthenticationFilter jwtAuthenticationFilter; // 🥊 추가: 인증 필터 주입
+    private final JwtAuthenticationFilter jwtAuthenticationFilter; // JWT 인증 필터
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -39,8 +40,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // CORS 설정 적용
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            // CORS 설정 적용
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
             // CSRF 비활성화
             .csrf(csrf -> csrf.disable())
@@ -48,24 +49,24 @@ public class SecurityConfig {
             // 세션 관리: STATELESS
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            // 예외 핸들링 (중요: 여기서 실시간 보안 알림을 호출합니다)
+            // 예외 핸들링
             .exceptionHandling(exception -> exception
-                // 인증되지 않은 사용자가 보호된 리소스에 접근했을 때 (401)
                 .authenticationEntryPoint((request, response, authException) -> {
-                    SecurityViolationLog violationLog = SecurityViolationLog.of(
-                            getClientIp(request),
-                            request.getMethod(),
-                            request.getRequestURI(),
-                            HttpServletResponse.SC_UNAUTHORIZED,
-                            ViolationType.UNAUTHORIZED_ACCESS,
-                            request.getHeader("User-Agent"),
-                            "미인증 접근 시도 감지: " + request.getRequestURI()
-                    );
-
-                    sseService.sendAlert(violationLog); // DB 저장 및 SSE 전송
+                    // /error 페이지나 정적 리소스, 혹은 로그아웃 직후의 요청에 대한 401 로그 생략
+                    if (!request.getRequestURI().equals("/error") && !request.getRequestURI().equals("/api/auth/logout")) {
+                        SecurityViolationLog violationLog = SecurityViolationLog.of(
+                                getClientIp(request),
+                                request.getMethod(),
+                                request.getRequestURI(),
+                                HttpServletResponse.SC_UNAUTHORIZED,
+                                ViolationType.UNAUTHORIZED_ACCESS,
+                                request.getHeader("User-Agent"),
+                                "미인증 접근 시도 감지: " + request.getRequestURI()
+                        );
+                        sseService.sendAlert(violationLog);
+                    }
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
                 })
-                // 권한이 없는 사용자가 접근했을 때 (403)
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
                     SecurityViolationLog violationLog = SecurityViolationLog.of(
                             getClientIp(request),
@@ -76,8 +77,7 @@ public class SecurityConfig {
                             request.getHeader("User-Agent"),
                             "보안 위반 감지: 권한 부족 (" + request.getRequestURI() + ")"
                     );
-
-                    sseService.sendAlert(violationLog); // DB 저장 및 SSE 전송
+                    sseService.sendAlert(violationLog);
                     response.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden");
                 })
             )
@@ -88,11 +88,13 @@ public class SecurityConfig {
                     "/",
                     "/login/**",
                     "/oauth2/**",
-                    "/api/auth/**",
-                    "/api/sse/**", // SSE 연결은 무조건 허용
+                    "/api/auth/**",                //로그아웃(/api/auth/logout) 포함 모든 auth API 허용
+                    "/api/sse/**",
                     "/api/test/**",
                     "/api/dashboard/**",
                     "/api/products/**",
+                    "/api/member/me",
+                    "/api/member/additional-info",
                     "/assets/**", "/css/**", "/js/**", "/favicon.ico", "/error"
                 ).permitAll()
 
@@ -102,33 +104,31 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
 
-
-
             // OAuth2 로그인 설정
             .oauth2Login(oauth2 -> oauth2
                 .successHandler(oAuth2SuccessHandler)
             )
-                // 🥊 [핵심] JWT 인증 필터를 시큐리티 필터 체인에 등록
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
+            //시큐리티 기본 로그아웃 비활성화 (컨트롤러에서 직접 처리하므로)
+            // 혹은 아래 설정을 통해 시큐리티가 엔드포인트를 가로채지 않도록 함
+            .logout(logout -> logout.disable())
 
+            // JWT 인증 필터를 UsernamePasswordAuthenticationFilter 앞에 등록
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // CORS 세부 설정: 프론트엔드(5173)의 요청과 쿠키 전송을 허용
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Collections.singletonList("http://localhost:5173"));
+        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cache-Control"));
+        configuration.setAllowedHeaders(Collections.singletonList("*"));
         configuration.setAllowCredentials(true);
-
         configuration.setExposedHeaders(Arrays.asList(
-            "Authorization", "Content-Type", "Cache-Control", "Connection", "Transfer-Encoding"
+            "Authorization", "Set-Cookie", "Content-Type"
         ));
-
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -136,9 +136,6 @@ public class SecurityConfig {
         return source;
     }
 
-    /**
-     * 클라이언트 IP 추출 헬퍼 메서드
-     */
     private String getClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {

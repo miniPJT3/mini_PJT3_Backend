@@ -41,8 +41,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-id: 746271667399-ucbm9vc16mc515fqsnqh8v50abpckeu7.apps.googleusercontent.com
+            client-secret: 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
             # 구글 로그인 후 돌아올 백엔드 경로
             redirect-uri: "{baseUrl}/login/oauth2/code/google"
             scope:
