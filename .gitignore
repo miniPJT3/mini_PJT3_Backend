@@ -33,3 +33,6 @@ build/
 .vscode/
 
 .env
+
+###구글 로그인 보안키 파일
+src/main/resources/application-local.yml
