@@ -6,6 +6,7 @@ import mini_pjt3.com.team1.entity.SecurityViolationLog;
 import mini_pjt3.com.team1.repository.SecurityViolationLogRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.io.IOException;
 import java.util.List;
@@ -78,9 +79,28 @@ public class SseService {
             log.warn("⚠️ 연결된 SSE 클라이언트가 없어 알림을 전송하지 못했습니다.");
             return;
         }
-        
+
         emitters.keySet().forEach(userId -> {
             sendToClient(userId, "security-alert", alertData);
+        });
+    }
+
+    /**
+     * 🥊 30초마다 연결된 모든 클라이언트에게 하트비트(핑) 전송
+     * AWS ALB 연결 유지를 위해 30초 간격으로 설정
+     */
+    @Scheduled(fixedRate = 30000) // 30,000ms = 30초
+    public void sendHeartbeat() {
+        if (emitters.isEmpty()) {
+            return;
+        }
+
+        log.info("📡 모든 클라이언트에게 하트비트 전송 중... (연결 수: {})", emitters.size());
+
+        emitters.keySet().forEach(userId -> {
+            // "ping"이라는 이벤트 이름으로 현재 시간을 데이터에 실어 보냄
+            // 데이터가 매번 달라져야(타임스탬프 등) 프론트에서 데이터가 "쌓이는지" 확인하기 좋습니다.
+            sendToClient(userId, "ping", "heartbeat at " + System.currentTimeMillis());
         });
     }
 
