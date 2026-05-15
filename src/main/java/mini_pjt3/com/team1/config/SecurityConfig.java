@@ -50,18 +50,26 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
             // 예외 핸들링
-            .exceptionHandling(exception -> exception
-                .authenticationEntryPoint((request, response, authException) -> {
-                    // /error 페이지나 정적 리소스, 혹은 로그아웃 직후의 요청에 대한 401 로그 생략
-                    if (!request.getRequestURI().equals("/error") && !request.getRequestURI().equals("/api/auth/logout")) {
-                        SecurityViolationLog violationLog = SecurityViolationLog.of(
-                                getClientIp(request),
-                                request.getMethod(),
-                                request.getRequestURI(),
-                                HttpServletResponse.SC_UNAUTHORIZED,
-                                ViolationType.UNAUTHORIZED_ACCESS,
-                                request.getHeader("User-Agent"),
-                                "미인증 접근 시도 감지: " + request.getRequestURI()
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            String userAgent = request.getHeader("User-Agent");
+                            String uri = request.getRequestURI();
+
+                            // 🥊 error, 로그아웃, 헬스체크 경로 및 ELB 요청은 보안 로그 생략
+                            boolean isExempted = uri.equals("/error")
+                                    || uri.equals("/api/auth/logout")
+                                    || uri.equals("/api/health")
+                                    || (userAgent != null && userAgent.contains("ELB-HealthChecker"));
+
+                            if (!isExempted) {
+                                SecurityViolationLog violationLog = SecurityViolationLog.of(
+                                        getClientIp(request),
+                                        request.getMethod(),
+                                        uri,
+                                        HttpServletResponse.SC_UNAUTHORIZED,
+                                        ViolationType.UNAUTHORIZED_ACCESS,
+                                        userAgent,
+                                        "미인증 접근 시도 감지: " + uri
                         );
                         sseService.sendAlert(violationLog);
                     }
@@ -94,10 +102,8 @@ public class SecurityConfig {
                     "/api/products/**",
                     "/api/member/me",
                     "/api/member/additional-info",
-                    "/assets/**", "/css/**", "/js/**", "/favicon.ico", "/error"
+                    "/assets/**", "/css/**", "/js/**", "/favicon.ico", "/error", "/api/health"
                 ).permitAll()
-                // 판매자 대시보드: SELLER, ADMIN만 접근 가능
-                .requestMatchers("/api/dashboard/seller-sales").hasAnyRole("SELLER", "ADMIN")
 
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/payments/**").hasAnyRole("USER", "ADMIN", "SELLER")
