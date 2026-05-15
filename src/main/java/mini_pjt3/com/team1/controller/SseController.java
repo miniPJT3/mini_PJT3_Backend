@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -47,5 +49,22 @@ public class SseController {
     public String testAlert() {
         sseService.broadcastSecurityAlert("실시간 보안 점검 중입니다.");
         return "Alert sent!";
+    }
+
+    /**
+     * 핑 테스트
+     * 클라이언트가 SSE를 구독하기 위해 호출하는 엔드포인트
+     * produces = text/event-stream 형식을 반드시 지정해야 함
+     */
+    @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter subscribe(@AuthenticationPrincipal UserDetails userDetails) {
+
+        // 1. 로그인 정보가 있는지 확인
+        String userId = (userDetails != null) ? userDetails.getUsername() : "test-user-" + System.currentTimeMillis();
+
+        log.info("📡 SSE 구독 시작: userId = {}", userId);
+
+        // 2. 서비스의 subscribe 호출 (여기서 emitters 맵에 담기고 30초마다 핑이 나감)
+        return sseService.subscribe(userId);
     }
 }
