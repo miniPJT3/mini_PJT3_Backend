@@ -29,8 +29,8 @@ import java.util.List;
 public class SecurityConfig {
 
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
-    private final SseService sseService; // SSE 실시간 알림 및 DB 저장을 위해 주입
-    private final JwtAuthenticationFilter jwtAuthenticationFilter; // JWT 인증 필터
+    private final SseService sseService; 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter; 
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -55,7 +55,6 @@ public class SecurityConfig {
                     String userAgent = request.getHeader("User-Agent");
                     String uri = request.getRequestURI();
 
-                    //error, 로그아웃, 헬스체크 경로 및 ELB 요청은 보안 로그 생략
                     boolean isExempted = uri.equals("/error")
                             || uri.equals("/api/auth/logout")
                             || uri.equals("/api/health")
@@ -96,8 +95,9 @@ public class SecurityConfig {
                     "/",
                     "/login/**",
                     "/oauth2/**",
-                    "/login/oauth2/**",            // 구글 OAuth2 인증 완료 콜백 경로 추가 허용
-                    "/api/auth/**",                // 로그아웃(/api/auth/logout) 포함 모든 auth API 허용
+                    "/login/oauth2/**",
+                    "/api/oauth2/**",              
+                    "/api/auth/**",                
                     "/api/sse/**",
                     "/api/test/**",
                     "/api/products/**",
@@ -113,12 +113,20 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
 
-            // OAuth2 로그인 설정
+            // OAuth2 로그인 설정 수정
             .oauth2Login(oauth2 -> oauth2
+                // 프론트의 /api/oauth2/authorization/google 주소를 가로채도록 엔드포인트 지정
+                .authorizationEndpoint(authorization -> authorization
+                    .baseUri("/api/oauth2/authorization")
+                )
+                // 구글 인증 완료 후 백엔드가 콜백을 넘겨받는 엔드포인트 주소 구조 매핑
+                .redirectionEndpoint(redirection -> redirection
+                    .baseUri("/login/oauth2/code/*")
+                )
                 .successHandler(oAuth2SuccessHandler)
             )
 
-            // 시큐리티 기본 로그아웃 비활성화 (컨트롤러에서 직접 처리하므로)
+            // 시큐리티 기본 로그아웃 비활성화
             .logout(logout -> logout.disable())
 
             // JWT 인증 필터를 UsernamePasswordAuthenticationFilter 앞에 등록
@@ -131,7 +139,6 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // 로컬 테스트 주소와 실제 AWS ALB 배포 주소를 둘 다 허용하도록 목록 확장
         configuration.setAllowedOrigins(List.of(
             "http://localhost:5173",
             "http://team01-alb-1090661033.ap-northeast-2.elb.amazonaws.com"
@@ -139,7 +146,7 @@ public class SecurityConfig {
         
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Collections.singletonList("*"));
-        configuration.setAllowCredentials(true); // 쿠키 및 토큰 공유 허용
+        configuration.setAllowCredentials(true); 
         
         configuration.setExposedHeaders(Arrays.asList(
             "Authorization", "Set-Cookie", "Content-Type"

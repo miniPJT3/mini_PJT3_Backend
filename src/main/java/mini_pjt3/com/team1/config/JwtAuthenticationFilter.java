@@ -22,7 +22,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
 
     /**
-     * 🥊 [핵심 추가] 필터가 작동하지 않아야 할 경로 설정
+     *  필터가 작동하지 않아야 할 경로 설정
      * SSE 연결이나 정적 리소스는 필터를 거치지 않게 하여 JSON 파싱 에러를 방지합니다.
      */
     @Override
@@ -53,8 +53,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 2. 토큰 검증 및 SecurityContext에 인증 정보 설정
         if (token != null && jwtUtil.validateToken(token)) {
             try {
-                // 🥊 [핵심 수정] ROLE_USER 하드코딩 제거!
-                // JwtUtil에서 토큰 내에 저장된 진짜 권한(ROLE_ADMIN 등)을 꺼내옵니다.
+                //  ROLE_USER 하드코딩 제거
+                // JwtUtil에서 토큰 내에 저장된 진짜 권한(ROLE_ADMIN 등)을 꺼내옴
                 Authentication auth = jwtUtil.getAuthentication(token);
 
                 // 시큐리티 컨텍스트에 저장 (이제 컨트롤러에서 권한 체크 가능)
