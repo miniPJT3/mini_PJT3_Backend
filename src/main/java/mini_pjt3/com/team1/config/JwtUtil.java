@@ -3,6 +3,7 @@ package mini_pjt3.com.team1.config;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -18,10 +19,12 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.stream.Collectors;
 
+@Slf4j // 시스템 아웃 대신 로그를 사용하기 위해 추가
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret:your-very-long-and-secret-key-that-should-be-at-least-32-characters}")
+    // 배포 환경에서는 반드시 환경변수나 application.yml에 실제 키를 설정해야 합니다.
+    @Value("${jwt.secret}")
     private String secretKey;
 
     private Key key;
@@ -29,32 +32,35 @@ public class JwtUtil {
 
     @PostConstruct
     public void init() {
+        // secretKey가 너무 짧으면 에러가 발생할 수 있으므로, 바이트 배열로 변환하여 키 생성
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
+    /**
+     * 토큰 생성
+     */
     public String createToken(Authentication authentication) {
         String email;
         String name = "";
 
-        // 1. [핵심] 권한 정보 추출 (ROLE_USER, ROLE_ADMIN 등을 문자열로 변환)
+        // 권한 정보 추출
         String authorities = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
-        // 2. 구글 로그인(OAuth2User)인 경우 처리
+        // 구글 로그인(OAuth2User)과 일반 로그인 분기 처리
         if (authentication.getPrincipal() instanceof OAuth2User oAuth2User) {
             email = oAuth2User.getAttribute("email");
             name = oAuth2User.getAttribute("name");
-        }
-        // 3. 일반 로그인인 경우 처리
-        else {
+        } else {
             email = authentication.getName();
-            name = email.split("@")[0];
+            // 이름 정보가 따로 없다면 이메일 앞부분 사용
+            name = email.contains("@") ? email.split("@")[0] : email;
         }
 
         Claims claims = Jwts.claims().setSubject(email);
         claims.put("name", name);
-        claims.put("auth", authorities); // 🥊 [중요] 토큰에 권한 정보 저장
+        claims.put("auth", authorities); 
 
         Date now = new Date();
         return Jwts.builder()
@@ -65,52 +71,52 @@ public class JwtUtil {
                 .compact();
     }
 
-    // 토큰 유효성 검증
+    /**
+     * 토큰 유효성 검증
+     */
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
         } catch (SecurityException | MalformedJwtException e) {
-            System.out.println("잘못된 JWT 서명입니다.");
+            log.error("잘못된 JWT 서명입니다.");
         } catch (ExpiredJwtException e) {
-            System.out.println("만료된 JWT 토큰입니다.");
+            log.error("만료된 JWT 토큰입니다.");
         } catch (UnsupportedJwtException e) {
-            System.out.println("지원되지 않는 JWT 토큰입니다.");
+            log.error("지원되지 않는 JWT 토큰입니다.");
         } catch (IllegalArgumentException e) {
-            System.out.println("JWT 토큰이 비어있습니다.");
+            log.error("JWT 토큰이 비어있습니다.");
         }
         return false;
     }
 
-    // 토큰에서 사용자 이메일 추출
+    /**
+     * 토큰에서 사용자 이메일 추출
+     */
     public String getEmail(String token) {
         return Jwts.parserBuilder().setSigningKey(key).build()
                 .parseClaimsJws(token).getBody().getSubject();
     }
 
     /**
-     * 🥊 [핵심 수정] 토큰에서 권한 정보를 꺼내서 Authentication 객체 생성
+     * 토큰에서 Authentication 객체 생성
      */
     public Authentication getAuthentication(String token) {
         Claims claims = Jwts.parserBuilder().setSigningKey(key).build()
                 .parseClaimsJws(token).getBody();
 
-        // 1. 토큰에서 "auth" 클레임 꺼내기
         Object authClaim = claims.get("auth");
 
         Collection<? extends GrantedAuthority> authorities;
 
         if (authClaim != null && !authClaim.toString().isEmpty()) {
-            // "ROLE_USER,ROLE_ADMIN" -> List 생성
             authorities = Arrays.stream(authClaim.toString().split(","))
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
         } else {
-            // 권한 정보가 없으면 기본 ROLE_USER 부여
             authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
         }
 
-        // 2. 이제 하드코딩된 ROLE_USER가 아니라 실제 권한을 담은 신분증 반환
         return new UsernamePasswordAuthenticationToken(claims.getSubject(), "", authorities);
     }
 }

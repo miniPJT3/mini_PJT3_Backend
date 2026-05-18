@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feat/infra
+      - feat/login
     paths:
       - "src/**"
       - "pom.xml"      # Gradle 대신 Maven 설정 파일 감시
