@@ -50,26 +50,26 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
             // 예외 핸들링
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            String userAgent = request.getHeader("User-Agent");
-                            String uri = request.getRequestURI();
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint((request, response, authException) -> {
+                    String userAgent = request.getHeader("User-Agent");
+                    String uri = request.getRequestURI();
 
-                            // 🥊 error, 로그아웃, 헬스체크 경로 및 ELB 요청은 보안 로그 생략
-                            boolean isExempted = uri.equals("/error")
-                                    || uri.equals("/api/auth/logout")
-                                    || uri.equals("/api/health")
-                                    || (userAgent != null && userAgent.contains("ELB-HealthChecker"));
+                    //error, 로그아웃, 헬스체크 경로 및 ELB 요청은 보안 로그 생략
+                    boolean isExempted = uri.equals("/error")
+                            || uri.equals("/api/auth/logout")
+                            || uri.equals("/api/health")
+                            || (userAgent != null && userAgent.contains("ELB-HealthChecker"));
 
-                            if (!isExempted) {
-                                SecurityViolationLog violationLog = SecurityViolationLog.of(
-                                        getClientIp(request),
-                                        request.getMethod(),
-                                        uri,
-                                        HttpServletResponse.SC_UNAUTHORIZED,
-                                        ViolationType.UNAUTHORIZED_ACCESS,
-                                        userAgent,
-                                        "미인증 접근 시도 감지: " + uri
+                    if (!isExempted) {
+                        SecurityViolationLog violationLog = SecurityViolationLog.of(
+                                getClientIp(request),
+                                request.getMethod(),
+                                uri,
+                                HttpServletResponse.SC_UNAUTHORIZED,
+                                ViolationType.UNAUTHORIZED_ACCESS,
+                                userAgent,
+                                "미인증 접근 시도 감지: " + uri
                         );
                         sseService.sendAlert(violationLog);
                     }
@@ -96,11 +96,12 @@ public class SecurityConfig {
                     "/",
                     "/login/**",
                     "/oauth2/**",
-                    "/api/auth/**",                //로그아웃(/api/auth/logout) 포함 모든 auth API 허용
+                    "/login/oauth2/**",            // 구글 OAuth2 인증 완료 콜백 경로 추가 허용
+                    "/api/auth/**",                // 로그아웃(/api/auth/logout) 포함 모든 auth API 허용
                     "/api/sse/**",
                     "/api/test/**",
                     "/api/products/**",
-                        "/api/dashboard/**",
+                    "/api/dashboard/**",
                     "/api/member/me",
                     "/api/member/additional-info",
                     "/assets/**", "/css/**", "/js/**", "/favicon.ico", "/error", "/api/health"
@@ -117,8 +118,7 @@ public class SecurityConfig {
                 .successHandler(oAuth2SuccessHandler)
             )
 
-            //시큐리티 기본 로그아웃 비활성화 (컨트롤러에서 직접 처리하므로)
-            // 혹은 아래 설정을 통해 시큐리티가 엔드포인트를 가로채지 않도록 함
+            // 시큐리티 기본 로그아웃 비활성화 (컨트롤러에서 직접 처리하므로)
             .logout(logout -> logout.disable())
 
             // JWT 인증 필터를 UsernamePasswordAuthenticationFilter 앞에 등록
@@ -130,10 +130,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        
+        // 로컬 테스트 주소와 실제 AWS ALB 배포 주소를 둘 다 허용하도록 목록 확장
+        configuration.setAllowedOrigins(List.of(
+            "http://localhost:5173",
+            "http://team01-alb-1090661033.ap-northeast-2.elb.amazonaws.com"
+        ));
+        
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Collections.singletonList("*"));
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(true); // 쿠키 및 토큰 공유 허용
+        
         configuration.setExposedHeaders(Arrays.asList(
             "Authorization", "Set-Cookie", "Content-Type"
         ));

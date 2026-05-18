@@ -29,7 +29,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         
-        //구글 고유 식별자(sub) 및 이메일 추출
+        // 구글 고유 식별자(sub) 및 이메일 추출
         String providerId = oAuth2User.getAttribute("sub");
         String email = oAuth2User.getAttribute("email");
         
@@ -40,46 +40,49 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             memberOpt = memberRepository.findByEmail(email);
         }
         
-        String baseUrl = "http://localhost:5173";
+        // 배포 환경의 프론트엔드 베이스 주소 (ALB 주소)
+        String baseUrl = "http://team01-alb-1090661033.ap-northeast-2.elb.amazonaws.com";
         String targetUrl;
 
         if (memberOpt.isPresent()) {
             Member member = memberOpt.get();
 
-            // DB에 provider_id가 비어있다면(첫 구글 로그인) 정보 업데이트.
+            // 첫 구글 로그인 시 정보 업데이트
             if (member.getProviderId() == null || member.getProviderId().isEmpty()) {
                 member.setProvider("GOOGLE");
                 member.setProviderId(providerId);
                 memberRepository.save(member);
             }
 
-            // JWT 토큰 생성 및 쿠키 설정
+            // JWT 토큰 생성
             String token = jwtUtil.createToken(authentication); 
 
+            //  배포 환경에서 브라우저가 쿠키를 온전하게 저장할 수 있도록 domain 설정을 명시
             ResponseCookie cookie = ResponseCookie.from("accessToken", token)
                     .path("/")
+                    .domain("team01-alb-1090661033.ap-northeast-2.elb.amazonaws.com") // ALB 도메인 명시
                     .httpOnly(true)
-                    .secure(false) // HTTP 환경이므로 false
+                    .secure(false) // HTTP 배포 환경이므로 false 유지 (향후 SSL/HTTPS 적용 시 true 변경)
                     .maxAge(3600)
-                    .sameSite("Lax")
+                    .sameSite("Lax") // 크로스 도메인 리다이렉트 시 쿠키 유지 설정
                     .build();
 
             response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
             // 리다이렉트 분기 로직
-            // DB의 Role 필드에 GUEST가 정의되어 있지 않다면 에러가 날 수 있으므로 체크
             if (member.getPhone() == null || member.getPhone().isEmpty()) {
-                // 전화번호가 없으면 추가 정보 입력 페이지로 이동
+                // 추가 정보 입력이 필요한 경우
                 targetUrl = baseUrl + "/additional-info";
             } else {
                 // 역할에 따른 대시보드 이동
                 targetUrl = determineTargetUrlByRole(baseUrl, member.getRole());
             }
         } else {
-            // 가입되지 않은 구글 계정인 경우
+            // 회원가입이 되어 있지 않은 계정인 경우
             targetUrl = baseUrl + "/login?error=user_not_found";
         }
 
+        // 세션에 남아있는 인증 관련 데이터 삭제 및 리다이렉트 실행
         clearAuthenticationAttributes(request);
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
@@ -88,7 +91,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
      * 역할에 따른 타겟 URL 결정 헬퍼 메서드
      */
     private String determineTargetUrlByRole(String baseUrl, Role role) {
-        // null 체크를 추가하여 안전하게 처리
         if (role == null) return baseUrl + "/user/home";
 
         switch (role) {
